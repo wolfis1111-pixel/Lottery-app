@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lottery Number Generator</title>
+
+<style>
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #f2f2f2;
+  padding: 20px;
+}
+.container {
+  background: white;
+  max-width: 420px;
+  margin: auto;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.1);
+}
+h2 {
+  text-align: center;
+}
+select, button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 12px;
+  font-size: 16px;
+}
+button {
+  background: #007aff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+}
+.result {
+  margin-top: 20px;
+  font-size: 18px;
+  text-align: center;
+}
+.odds {
+  margin-top: 10px;
+  font-size: 14px;
+  color: #666;
+  text-align: center;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+  <h2>Lottery Generator</h2>
+
+  <label>Game</label>
+  <select id="game">
+    <option value="powerball">Powerball</option>
+    <option value="lucky">Ohio Lucky for Life</option>
+  </select>
+
+  <button onclick="generate()">Generate Numbers</button>
+
+  <div class="result" id="output"></div>
+  <div class="odds" id="odds"></div>
+  <div class="odds">(For entertainment only)</div>
+</div>
+
+<script>
+function uniqueNumbers(count, min, max) {
+  const nums = [];
+  while (nums.length < count) {
+    const n = Math.floor(Math.random() * (max - min + 1)) + min;
+    if (!nums.includes(n)) nums.push(n);
+  }
+  return nums.sort((a,b)=>a-b);
+}
+
+function generate() {
+  const game = document.getElementById("game").value;
+  let main, bonus, odds;
+
+  if (game === "powerball") {
+    main = uniqueNumbers(5, 1, 69);
+    bonus = uniqueNumbers(1, 1, 26)[0];
+    odds = "Jackpot odds: 1 in 292,201,338";
+  } else {
+    main = uniqueNumbers(5, 1, 48);
+    bonus = uniqueNumbers(1, 1, 18)[0];
+    odds = "Top prize odds: 1 in 30,821,472";
+  }
+
+  document.getElementById("output").innerHTML =
+    `Main: ${main.join(" - ")}<br>Bonus: ${bonus}`;
+
+  document.getElementById("odds").innerText = odds;
+}
+</script>
+
+</body>
+</html>
