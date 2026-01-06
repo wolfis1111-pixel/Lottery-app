@@ -1,367 +1,721 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Lottery Generator (CSV Import)</title>
-<style>
-  body { font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; background:#f2f2f2; padding:20px; }
-  .container { background:#fff; max-width:520px; margin:auto; padding:18px; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,.08); }
-  h2 { margin: 6px 0 14px; text-align:center; }
-  select, button, input[type="file"] { width:100%; padding:12px; margin-top:10px; font-size:16px; }
-  button { background:#007aff; color:#fff; border:none; border-radius:10px; }
-  .btn2 { background:#111; }
-  .row { display:flex; gap:10px; flex-wrap:wrap; }
-  .row > * { flex:1; min-width: 160px; }
-  .card { background:#fafafa; border:1px solid #eee; border-radius:12px; padding:14px; margin-top:14px; }
-  .muted { color:#666; font-size:14px; }
-  .result { font-size:18px; text-align:center; margin-top:10px; }
-  .pill { display:inline-block; border:1px solid #ddd; border-radius:999px; padding:6px 10px; margin:6px 6px 0 0; background:white; }
-  ol { margin: 8px 0 0 18px; }
-  code { background:#eee; padding:2px 6px; border-radius:6px; }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lottery App (DB + Generator + Predict)</title>
+  <style>
+    :root { color-scheme: light; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 16px; background:#fafafa; }
+    h1 { font-size: 20px; margin: 0 0 6px; }
+    h2 { font-size: 16px; margin: 0 0 8px; }
+    .small { color:#555; font-size: 13px; line-height: 1.35; }
+    .ok { color: #0a7; font-weight: 700; }
+    .err { color: #c00; font-weight: 700; }
+
+    .topbar { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom: 10px; }
+    .today { text-align:right; }
+    .pill { display:inline-block; padding: 4px 10px; border-radius: 999px; background:#f1f1f1; border:1px solid #e5e5e5; font-weight:700; font-size:12px; }
+
+    .tabs { display:flex; gap:10px; margin: 10px 0 14px; }
+    .tabbtn {
+      flex:1; padding: 10px; border-radius: 12px; border:1px solid #ddd; background:#fff;
+      font-weight: 900; font-size: 14px;
+    }
+    .tabbtn.active { background:#111; color:#fff; border-color:#111; }
+
+    .card { background:#fff; border: 1px solid #e5e5e5; border-radius: 14px; padding: 12px; margin: 12px 0; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+    label { display:block; font-weight: 800; margin-top: 10px; }
+    select, input, textarea, button {
+      width: 100%; padding: 10px; font-size: 16px; margin-top: 6px;
+      border-radius: 12px; border:1px solid #ddd; background:#fff;
+    }
+    textarea { height: 110px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    button { border: 0; background:#111; color:#fff; font-weight: 900; }
+    button.secondary { background:#555; }
+    button.danger { background:#b00020; }
+    button:disabled { background:#999; }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .btnRow { display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
+    .btnRow button { flex: 1; min-width: 160px; }
+
+    .numbers { font-size: 20px; font-weight: 950; padding: 12px; border: 1px dashed #999; border-radius: 14px; text-align:center; background:#fff; letter-spacing: .5px; }
+    .mutedBox { background:#fcfcfc; border:1px solid #eee; border-radius: 12px; padding:10px; }
+    .hide { display:none; }
+    .note { background:#fff7e6; border:1px solid #ffe2a8; padding:10px; border-radius:12px; }
+
+    .hotWrap { display:grid; gap:10px; margin-top:10px; }
+    .hotBox { border:1px solid #eee; border-radius:12px; padding:10px; background:#fcfcff; }
+    .coldBox { border:1px solid #eee; border-radius:12px; padding:10px; background:#fffafa; }
+    .sectionTitle { font-weight: 950; margin-bottom:6px; }
+    .chips { display:flex; flex-wrap:wrap; gap:8px; }
+    .chip {
+      display:inline-flex; align-items:center; gap:6px;
+      padding:6px 10px; border-radius:999px; background:#fff; border:1px solid #e5e5e5;
+      font-weight: 900; font-size: 13px;
+    }
+    .chip span { font-weight: 800; color:#666; font-size:12px; }
+    .chip .sep { color:#bbb; font-weight:900; }
+  </style>
 </head>
 <body>
-<div class="container">
-  <h2>Lottery Generator</h2>
-
-  <div class="card">
-    <strong>Step 1: Import your CSV (900 draws)</strong>
-    <div class="muted" style="margin-top:6px;">
-      CSV columns must be: <code>game,draw_date,n1,n2,n3,n4,n5,bonus</code><br>
-      game values: <code>powerball</code> or <code>ohio_lucky_for_life</code>
+  <div class="topbar">
+    <div>
+      <h1>Lottery App</h1>
+      <div class="small">
+        Required CSV: <code>game,draw_date,n1,n2,n3,n4,n5,bonus</code><br/>
+        game: <code>powerball</code> or <code>ohio_lucky_for_life</code>
+      </div>
     </div>
-
-    <input id="csvFile" type="file" accept=".csv,text/csv" />
-    <button class="btn2" onclick="importCSV()">Import CSV into this phone</button>
-    <button onclick="clearData()">Clear imported data</button>
-
-    <div class="muted" id="importStatus" style="margin-top:10px;"></div>
-  </div>
-
-  <div class="card">
-    <strong>Step 2: Generate numbers</strong>
-
-    <label class="muted">Game</label>
-    <select id="game">
-      <option value="powerball">Powerball</option>
-      <option value="ohio_lucky_for_life">Ohio Lucky for Life</option>
-    </select>
-
-    <label class="muted">Method</label>
-    <select id="method">
-      <option value="random">Random</option>
-      <option value="hot">Hot (from CSV)</option>
-      <option value="cold">Cold (from CSV)</option>
-      <option value="weighted">Weighted (from CSV)</option>
-    </select>
-
-    <label class="muted">Lookback draws (uses most recent N in your imported data)</label>
-    <select id="lookback">
-      <option value="50">50</option>
-      <option value="100">100</option>
-      <option value="365">365</option>
-      <option value="900">900</option>
-    </select>
-
-    <button onclick="generate()">Generate Numbers</button>
-
-    <div class="result" id="output"></div>
-    <div class="muted" id="odds" style="text-align:center; margin-top:8px;"></div>
-    <div class="muted" style="text-align:center; margin-top:4px;">
-      For entertainment only. Generator does not change official odds.
+    <div class="today">
+      <div class="pill">Today</div>
+      <div id="todayText" style="font-weight:950;font-size:14px;margin-top:6px;"></div>
+      <div class="small" id="todayISO"></div>
     </div>
   </div>
 
-  <div class="card">
-    <strong>Hot numbers preview (from your imported data)</strong>
-    <div class="muted">Shows top 10 main numbers for the selected game + lookback.</div>
-    <div id="hotPreview" style="margin-top:10px;"></div>
+  <div class="tabs">
+    <button class="tabbtn active" id="tabDb">Database</button>
+    <button class="tabbtn" id="tabGen">Generator</button>
+    <button class="tabbtn" id="tabPred">Predict</button>
   </div>
 
-</div>
+  <!-- ================== DATABASE TAB ================== -->
+  <div id="viewDb">
+    <div class="card">
+      <h2>Saved database</h2>
+      <div id="savedStatus" class="small"></div>
+      <div class="btnRow">
+        <button class="secondary" id="downloadBtn" disabled>Download Backup CSV</button>
+        <button class="danger" id="clearBtn" disabled>Clear Saved DB</button>
+      </div>
+      <div id="summary" class="small" style="margin-top:8px;"></div>
+    </div>
+
+    <div class="card">
+      <h2>Import CSV (one time)</h2>
+      <input id="fileInput" type="file" accept=".csv,text/csv" />
+      <div id="loadStatus" class="small" style="margin-top:8px;"></div>
+
+      <div class="mutedBox" style="margin-top:10px;">
+        <label>Or paste CSV text:</label>
+        <textarea id="csvText" placeholder="Paste CSV here..."></textarea>
+        <button class="secondary" id="usePastedBtn">Import & Save Pasted CSV</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Add a new draw (date picker + dropdowns)</h2>
+
+      <label>Game</label>
+      <select id="gameSelect">
+        <option value="powerball">powerball</option>
+        <option value="ohio_lucky_for_life">ohio_lucky_for_life</option>
+      </select>
+
+      <label>Draw Date</label>
+      <input id="drawDate" type="date" />
+
+      <div class="row">
+        <div><label>n1</label><select id="n1"></select></div>
+        <div><label>n2</label><select id="n2"></select></div>
+        <div><label>n3</label><select id="n3"></select></div>
+        <div><label>n4</label><select id="n4"></select></div>
+        <div><label>n5</label><select id="n5"></select></div>
+        <div><label id="bonusLabel">bonus</label><select id="bonus"></select></div>
+      </div>
+
+      <button id="addBtn" disabled>Add Draw to Database</button>
+      <div id="addStatus" class="small" style="margin-top:8px;"></div>
+    </div>
+  </div>
+
+  <!-- ================== GENERATOR TAB ================== -->
+  <div id="viewGen" class="hide">
+    <div class="card">
+      <h2>Random Generator</h2>
+
+      <label>Game</label>
+      <select id="genGame">
+        <option value="powerball">powerball</option>
+        <option value="ohio_lucky_for_life">ohio_lucky_for_life</option>
+      </select>
+
+      <div class="row">
+        <div>
+          <label>How many sets?</label>
+          <input id="genCount" type="number" min="1" max="50" value="5" />
+        </div>
+        <div>
+          <label>Avoid exact matches from last N draws</label>
+          <input id="avoidLastN" type="number" min="0" max="500" value="0" />
+        </div>
+      </div>
+
+      <button id="genBtn">Generate</button>
+
+      <div id="genOut" style="margin-top:10px; display:grid; gap:10px;"></div>
+      <div id="genStatus" class="small" style="margin-top:8px;"></div>
+    </div>
+  </div>
+
+  <!-- ================== PREDICT TAB ================== -->
+  <div id="viewPred" class="hide">
+    <div class="card">
+      <h2>“Most Likely” Picks (from your history)</h2>
+
+      <div class="note small">
+        This does <b>not</b> predict the lottery (draws are random). It generates <b>frequency-weighted</b> picks based on your saved historical draws.
+      </div>
+
+      <label>Game</label>
+      <select id="predGame">
+        <option value="powerball">powerball</option>
+        <option value="ohio_lucky_for_life">ohio_lucky_for_life</option>
+      </select>
+
+      <div class="row">
+        <div>
+          <label>How many sets?</label>
+          <input id="predCount" type="number" min="1" max="50" value="5" />
+        </div>
+        <div>
+          <label>Weighting</label>
+          <select id="predMode">
+            <option value="freq">Frequency only</option>
+            <option value="recent">Recency-weighted</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Recency strength</label>
+          <input id="recentStrength" type="number" min="0" max="10" step="0.5" value="3" />
+          <div class="small">Higher = recent draws count more.</div>
+        </div>
+        <div>
+          <label>Use last N draws (0 = all)</label>
+          <input id="predLastN" type="number" min="0" max="2000" value="0" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Hot/Cold list display</label>
+          <select id="hotDisplay">
+            <option value="w">Weights only</option>
+            <option value="c">Counts only</option>
+            <option value="cw">Counts + Weights</option>
+          </select>
+        </div>
+        <div>
+          <label>Status</label>
+          <div class="mutedBox small" style="margin-top:6px;" id="autoHotHint">
+            Hot & cold numbers auto-refresh when you change settings.
+          </div>
+        </div>
+      </div>
+
+      <div class="btnRow">
+        <button class="secondary" id="hotBtn">Refresh Hot/Cold</button>
+        <button id="predBtn">Generate Most Likely</button>
+      </div>
+
+      <div class="hotWrap">
+        <div class="hotBox">
+          <div class="sectionTitle">Hot Main Numbers (Top 10)</div>
+          <div class="chips" id="hotMain"></div>
+        </div>
+        <div class="hotBox">
+          <div class="sectionTitle">Hot Bonus Numbers (Top 5)</div>
+          <div class="chips" id="hotBonus"></div>
+        </div>
+
+        <div class="coldBox">
+          <div class="sectionTitle">Cold Main Numbers (Bottom 10)</div>
+          <div class="chips" id="coldMain"></div>
+        </div>
+        <div class="coldBox">
+          <div class="sectionTitle">Cold Bonus Numbers (Bottom 5)</div>
+          <div class="chips" id="coldBonus"></div>
+        </div>
+      </div>
+
+      <div id="predOut" style="margin-top:10px; display:grid; gap:10px;"></div>
+      <div id="predStatus" class="small" style="margin-top:8px;"></div>
+    </div>
+  </div>
 
 <script>
-/** ---------- Storage ---------- **/
-const STORAGE_KEY = "lottery_draws_v1";
+  const REQUIRED_HEADER = "game,draw_date,n1,n2,n3,n4,n5,bonus";
+  const STORAGE_KEY = "LOTTERY_DRAW_DB_CSV_V1";
 
-function loadDraws() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-  } catch {
-    return [];
-  }
-}
+  const RULES = {
+    powerball: { mainMin: 1, mainMax: 69, bonusMin: 1, bonusMax: 26, bonusLabel: "Powerball" },
+    ohio_lucky_for_life: { mainMin: 1, mainMax: 48, bonusMin: 1, bonusMax: 18, bonusLabel: "Lucky Ball" }
+  };
 
-function saveDraws(draws) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(draws));
-}
+  let dbLines = [];
+  const el = (id) => document.getElementById(id);
 
-/** ---------- Helpers ---------- **/
-function uniqueNumbers(count, min, max) {
-  const nums = [];
-  while (nums.length < count) {
-    const n = Math.floor(Math.random() * (max - min + 1)) + min;
-    if (!nums.includes(n)) nums.push(n);
-  }
-  return nums.sort((a,b)=>a-b);
-}
-
-function parseCSV(text) {
-  // Simple CSV parser (handles commas, not quotes-with-commas).
-  const lines = text.replace(/\r/g, "").split("\n").filter(l => l.trim().length > 0);
-  if (lines.length < 2) return [];
-  const headers = lines[0].split(",").map(h => h.trim().toLowerCase());
-
-  const idx = (name) => headers.indexOf(name);
-  const required = ["game","draw_date","n1","n2","n3","n4","n5","bonus"];
-  for (const r of required) {
-    if (idx(r) === -1) throw new Error("Missing column: " + r);
+  function setStatus(target, msg, ok=true) {
+    target.innerHTML = msg ? (ok ? `<span class="ok">${msg}</span>` : `<span class="err">${msg}</span>`) : "";
   }
 
-  const out = [];
-  for (let i=1; i<lines.length; i++) {
-    const parts = lines[i].split(",").map(p => p.trim());
-    if (parts.length < headers.length) continue;
-
-    const game = parts[idx("game")].toLowerCase();
-    const draw_date = parts[idx("draw_date")];
-
-    const row = {
-      game,
-      draw_date,
-      main: [
-        Number(parts[idx("n1")]),
-        Number(parts[idx("n2")]),
-        Number(parts[idx("n3")]),
-        Number(parts[idx("n4")]),
-        Number(parts[idx("n5")])
-      ],
-      bonus: Number(parts[idx("bonus")])
-    };
-
-    // Basic validation
-    if (!["powerball","ohio_lucky_for_life"].includes(row.game)) continue;
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(row.draw_date)) continue;
-    if (row.main.some(n => !Number.isFinite(n))) continue;
-    if (!Number.isFinite(row.bonus)) continue;
-
-    out.push(row);
-  }
-  return out;
-}
-
-function getGameRules(game) {
-  if (game === "powerball") {
-    return { mainMin:1, mainMax:69, bonusMin:1, bonusMax:26, odds:"Jackpot odds: 1 in 292,201,338" };
-  }
-  return { mainMin:1, mainMax:48, bonusMin:1, bonusMax:18, odds:"Top prize odds: 1 in 30,821,472" };
-}
-
-function mostRecent(draws, game, lookback) {
-  // Sort by draw_date desc and take N
-  const filtered = draws.filter(d => d.game === game).slice();
-  filtered.sort((a,b) => (a.draw_date < b.draw_date ? 1 : -1));
-  return filtered.slice(0, lookback);
-}
-
-function countFrequencies(drawsSlice, rules) {
-  const mainCounts = new Map();
-  const bonusCounts = new Map();
-
-  for (let n = rules.mainMin; n <= rules.mainMax; n++) mainCounts.set(n, 0);
-  for (let n = rules.bonusMin; n <= rules.bonusMax; n++) bonusCounts.set(n, 0);
-
-  for (const d of drawsSlice) {
-    for (const n of d.main) mainCounts.set(n, (mainCounts.get(n) || 0) + 1);
-    bonusCounts.set(d.bonus, (bonusCounts.get(d.bonus) || 0) + 1);
-  }
-  return { mainCounts, bonusCounts };
-}
-
-function topN(map, n, descending=true) {
-  const arr = Array.from(map.entries()); // [num, count]
-  arr.sort((a,b) => descending ? (b[1]-a[1] || a[0]-b[0]) : (a[1]-b[1] || a[0]-b[0]));
-  return arr.slice(0, n);
-}
-
-function weightedChoice(items, weights) {
-  // items: [1,2,3], weights: [w1,w2,w3]
-  const total = weights.reduce((s,w)=>s+w,0);
-  let r = Math.random() * total;
-  for (let i=0; i<items.length; i++) {
-    r -= weights[i];
-    if (r <= 0) return items[i];
-  }
-  return items[items.length-1];
-}
-
-/** ---------- CSV Import ---------- **/
-async function importCSV() {
-  const fileInput = document.getElementById("csvFile");
-  const status = document.getElementById("importStatus");
-  status.textContent = "";
-
-  if (!fileInput.files || fileInput.files.length === 0) {
-    status.textContent = "Pick a CSV file first.";
-    return;
+  function isISODate(s) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+    const d = new Date(s + "T00:00:00");
+    return !Number.isNaN(d.getTime());
   }
 
-  const file = fileInput.files[0];
-  const text = await file.text();
+  function parseCsv(text) {
+    const trimmed = (text || "").trim();
+    if (!trimmed) throw new Error("CSV is empty.");
+    const lines = trimmed.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    if (!lines.length) throw new Error("CSV has no lines.");
+    if (lines[0] !== REQUIRED_HEADER) throw new Error("CSV columns must be: " + REQUIRED_HEADER);
 
-  let parsed;
-  try {
-    parsed = parseCSV(text);
-  } catch (e) {
-    status.textContent = "Import failed: " + e.message;
-    return;
-  }
-
-  if (parsed.length === 0) {
-    status.textContent = "No valid rows found. Check your CSV format.";
-    return;
-  }
-
-  // Deduplicate by game+date
-  const existing = loadDraws();
-  const key = (d) => `${d.game}__${d.draw_date}`;
-  const existingKeys = new Set(existing.map(key));
-
-  let inserted = 0;
-  for (const d of parsed) {
-    if (!existingKeys.has(key(d))) {
-      existing.push(d);
-      existingKeys.add(key(d));
-      inserted++;
+    for (let i=1; i<lines.length; i++) {
+      const parts = lines[i].split(",").map(x=>x.trim());
+      if (parts.length !== 8) throw new Error(`Bad row at line ${i+1}: expected 8 columns.`);
+      const [game, draw_date] = parts;
+      if (game !== "powerball" && game !== "ohio_lucky_for_life") throw new Error(`Bad game at line ${i+1}: ${game}`);
+      if (!isISODate(draw_date)) throw new Error(`Bad draw_date at line ${i+1}: ${draw_date}`);
+      const nums = parts.slice(2).map(Number);
+      if (nums.some(x => !Number.isFinite(x))) throw new Error(`Non-numeric value at line ${i+1}`);
     }
+    return lines;
   }
 
-  saveDraws(existing);
-  status.textContent = `Imported ${inserted} new draws. Total stored on this phone: ${existing.length}.`;
-  refreshHotPreview();
-}
+  function saveToDevice() {
+    localStorage.setItem(STORAGE_KEY, dbLines.join("\n"));
+    refreshTopStatus();
+  }
 
-function clearData() {
-  localStorage.removeItem(STORAGE_KEY);
-  document.getElementById("importStatus").textContent = "Cleared. No draws stored.";
-  refreshHotPreview();
-}
+  function loadFromDevice() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return false;
+    dbLines = parseCsv(saved);
+    return true;
+  }
 
-/** ---------- Generator ---------- **/
-function generate() {
-  const game = document.getElementById("game").value;
-  const method = document.getElementById("method").value;
-  const lookback = Number(document.getElementById("lookback").value);
+  function range(min, max) { return Array.from({length:max-min+1}, (_,i)=>i+min); }
 
-  const rules = getGameRules(game);
-  const draws = loadDraws();
-  const slice = mostRecent(draws, game, lookback);
-  const haveData = slice.length >= 10;
+  function fillSelect(sel, options, def) {
+    sel.innerHTML = "";
+    for (const v of options) {
+      const opt = document.createElement("option");
+      opt.value = String(v);
+      opt.textContent = String(v);
+      sel.appendChild(opt);
+    }
+    sel.value = String(def);
+  }
 
-  let main, bonus;
+  function refreshAddDropdowns() {
+    const game = el("gameSelect").value;
+    const r = RULES[game];
+    el("bonusLabel").textContent = "bonus (" + r.bonusLabel + ")";
+    const mainOpts = range(r.mainMin, r.mainMax);
+    fillSelect(el("n1"), mainOpts, r.mainMin);
+    fillSelect(el("n2"), mainOpts, r.mainMin+1);
+    fillSelect(el("n3"), mainOpts, r.mainMin+2);
+    fillSelect(el("n4"), mainOpts, r.mainMin+3);
+    fillSelect(el("n5"), mainOpts, r.mainMin+4);
+    const bonusOpts = range(r.bonusMin, r.bonusMax);
+    fillSelect(el("bonus"), bonusOpts, r.bonusMin);
+  }
 
-  if (method === "random" || !haveData) {
-    main = uniqueNumbers(5, rules.mainMin, rules.mainMax);
-    bonus = uniqueNumbers(1, rules.bonusMin, rules.bonusMax)[0];
-  } else {
-    const { mainCounts, bonusCounts } = countFrequencies(slice, rules);
+  function hasDuplicate(game, draw_date) {
+    for (let i=1; i<dbLines.length; i++) {
+      const parts = dbLines[i].split(",").map(x=>x.trim());
+      if (parts[0] === game && parts[1] === draw_date) return true;
+    }
+    return false;
+  }
 
-    if (method === "hot") {
-      const pool = topN(mainCounts, 20, true).map(x => x[0]);
-      main = uniqueNumbersFromPool(5, pool);
-      const bpool = topN(bonusCounts, 10, true).map(x => x[0]);
-      bonus = bpool.length ? bpool[Math.floor(Math.random()*bpool.length)] : uniqueNumbers(1, rules.bonusMin, rules.bonusMax)[0];
-    } else if (method === "cold") {
-      const pool = topN(mainCounts, 20, false).map(x => x[0]);
-      main = uniqueNumbersFromPool(5, pool);
-      const bpool = topN(bonusCounts, 10, false).map(x => x[0]);
-      bonus = bpool.length ? bpool[Math.floor(Math.random()*bpool.length)] : uniqueNumbers(1, rules.bonusMin, rules.bonusMax)[0];
-    } else if (method === "weighted") {
-      // weight = count + 1 so zeros still possible
-      main = weightedUnique(5, mainCounts, rules.mainMin, rules.mainMax);
-      bonus = weightedBonus(bonusCounts, rules.bonusMin, rules.bonusMax);
+  function summarize() {
+    if (!dbLines.length) { el("summary").textContent = ""; return; }
+    let pb = 0, lfl = 0;
+    for (let i=1;i<dbLines.length;i++) {
+      const g = dbLines[i].split(",")[0].trim();
+      if (g === "powerball") pb++;
+      if (g === "ohio_lucky_for_life") lfl++;
+    }
+    el("summary").textContent = `Rows saved: ${dbLines.length-1} (powerball: ${pb}, ohio_lucky_for_life: ${lfl})`;
+  }
+
+  function refreshTopStatus() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      setStatus(el("savedStatus"), "Saved DB found on this device.");
+      el("downloadBtn").disabled = false;
+      el("clearBtn").disabled = false;
+      el("addBtn").disabled = false;
+      summarize();
     } else {
-      main = uniqueNumbers(5, rules.mainMin, rules.mainMax);
-      bonus = uniqueNumbers(1, rules.bonusMin, rules.bonusMax)[0];
+      setStatus(el("savedStatus"), "No saved DB yet. Import your CSV below.", false);
+      el("downloadBtn").disabled = true;
+      el("clearBtn").disabled = true;
+      el("addBtn").disabled = true;
+      el("summary").textContent = "";
     }
   }
 
-  document.getElementById("output").innerHTML =
-    `<div class="pill"><strong>Main:</strong> ${main.join(" - ")}</div>` +
-    `<div class="pill"><strong>Bonus:</strong> ${bonus}</div>` +
-    (!haveData && method !== "random"
-      ? `<div class="muted" style="margin-top:10px;">(Not enough imported data yet — used Random.)</div>`
-      : "");
+  // ---- Tabs ----
+  let currentTab = "db";
+  function showTab(which) {
+    currentTab = which;
+    const db = el("viewDb"), gen = el("viewGen"), pred = el("viewPred");
+    const b1 = el("tabDb"), b2 = el("tabGen"), b3 = el("tabPred");
+    db.classList.add("hide"); gen.classList.add("hide"); pred.classList.add("hide");
+    b1.classList.remove("active"); b2.classList.remove("active"); b3.classList.remove("active");
 
-  document.getElementById("odds").textContent = rules.odds;
-  refreshHotPreview();
-}
-
-function uniqueNumbersFromPool(count, pool) {
-  const copy = pool.slice();
-  // If pool too small, expand fallback
-  if (copy.length < count) throw new Error("Pool too small");
-  // Shuffle
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
+    if (which === "db") { db.classList.remove("hide"); b1.classList.add("active"); }
+    if (which === "gen") { gen.classList.remove("hide"); b2.classList.add("active"); }
+    if (which === "pred") {
+      pred.classList.remove("hide");
+      b3.classList.add("active");
+      scheduleHotRefresh();
+    }
   }
-  return copy.slice(0, count).sort((a,b)=>a-b);
-}
+  el("tabDb").addEventListener("click", () => showTab("db"));
+  el("tabGen").addEventListener("click", () => showTab("gen"));
+  el("tabPred").addEventListener("click", () => showTab("pred"));
 
-function weightedUnique(k, mainCounts, min, max) {
-  const chosen = new Set();
-  const items = [];
-  const weights = [];
-  for (let n=min; n<=max; n++) {
-    items.push(n);
-    weights.push((mainCounts.get(n) || 0) + 1);
+  // ---- Import ----
+  el("fileInput").addEventListener("change", async (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const text = await f.text();
+    try { dbLines = parseCsv(text); saveToDevice(); setStatus(el("loadStatus"), "CSV imported and saved."); }
+    catch (err) { setStatus(el("loadStatus"), err.message || "Failed to import CSV", false); }
+  });
+
+  el("usePastedBtn").addEventListener("click", () => {
+    try { dbLines = parseCsv(el("csvText").value); saveToDevice(); setStatus(el("loadStatus"), "Pasted CSV imported and saved."); }
+    catch (err) { setStatus(el("loadStatus"), err.message || "Failed to import CSV", false); }
+  });
+
+  // ---- Add draw ----
+  el("addBtn").addEventListener("click", () => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) { setStatus(el("addStatus"), "Import CSV first.", false); return; }
+    try { dbLines = parseCsv(saved); } catch { setStatus(el("addStatus"), "Saved DB is corrupted. Re-import.", false); return; }
+
+    const game = el("gameSelect").value;
+    const draw_date = el("drawDate").value;
+    const r = RULES[game];
+
+    const n1=+el("n1").value, n2=+el("n2").value, n3=+el("n3").value, n4=+el("n4").value, n5=+el("n5").value, bonus=+el("bonus").value;
+    const mains=[n1,n2,n3,n4,n5];
+
+    if (!isISODate(draw_date)) { setStatus(el("addStatus"), "Pick a draw date.", false); return; }
+    if (new Set(mains).size !== 5) { setStatus(el("addStatus"), "n1..n5 must be unique.", false); return; }
+
+    const inRange = (x,min,max)=>Number.isFinite(x)&&x>=min&&x<=max;
+    if (!mains.every(x=>inRange(x,r.mainMin,r.mainMax))) { setStatus(el("addStatus"), `Main numbers must be ${r.mainMin}-${r.mainMax}.`, false); return; }
+    if (!inRange(bonus,r.bonusMin,r.bonusMax)) { setStatus(el("addStatus"), `Bonus must be ${r.bonusMin}-${r.bonusMax}.`, false); return; }
+
+    if (hasDuplicate(game, draw_date)) { setStatus(el("addStatus"), "That game + draw_date already exists.", false); return; }
+
+    dbLines.push(`${game},${draw_date},${n1},${n2},${n3},${n4},${n5},${bonus}`);
+    saveToDevice();
+    setStatus(el("addStatus"), "Added and saved (last line = last drawn).");
+  });
+
+  // ---------- Helpers ----------
+  function loadDbIfExists() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return false;
+    dbLines = parseCsv(saved);
+    return true;
   }
-  while (chosen.size < k) {
-    chosen.add(weightedChoice(items, weights));
-  }
-  return Array.from(chosen).sort((a,b)=>a-b);
-}
 
-function weightedBonus(bonusCounts, min, max) {
-  const items = [];
-  const weights = [];
-  for (let n=min; n<=max; n++) {
-    items.push(n);
-    weights.push((bonusCounts.get(n) || 0) + 1);
-  }
-  return weightedChoice(items, weights);
-}
-
-/** ---------- Hot preview ---------- **/
-function refreshHotPreview() {
-  const game = document.getElementById("game").value;
-  const lookback = Number(document.getElementById("lookback").value);
-  const rules = getGameRules(game);
-
-  const draws = loadDraws();
-  const slice = mostRecent(draws, game, lookback);
-
-  const box = document.getElementById("hotPreview");
-  if (slice.length < 10) {
-    box.innerHTML = `<div class="muted">Import at least 10 draws to see hot numbers.</div>`;
-    return;
+  function rowsForGame(game) {
+    const rows = [];
+    for (let i=1; i<dbLines.length; i++) {
+      const [g, draw_date, n1,n2,n3,n4,n5,bonus] = dbLines[i].split(",").map(x=>x.trim());
+      if (g !== game) continue;
+      rows.push({ draw_date, n1:+n1,n2:+n2,n3:+n3,n4:+n4,n5:+n5, bonus:+bonus });
+    }
+    return rows;
   }
 
-  const { mainCounts } = countFrequencies(slice, rules);
-  const hot10 = topN(mainCounts, 10, true);
+  // ---------- Generator ----------
+  function pickUnique(min, max, count) {
+    const set = new Set();
+    while (set.size < count) set.add(Math.floor(Math.random()*(max-min+1))+min);
+    return Array.from(set).sort((a,b)=>a-b);
+  }
+  function key(draw){ return `${draw.n1}-${draw.n2}-${draw.n3}-${draw.n4}-${draw.n5}|${draw.bonus}`; }
 
-  box.innerHTML = `
-    <div><strong>${game === "powerball" ? "Powerball" : "Ohio Lucky for Life"}</strong> — using last ${Math.min(lookback, slice.length)} draws</div>
-    <ol>
-      ${hot10.map(([n,c]) => `<li><strong>${n}</strong> — ${c} times</li>`).join("")}
-    </ol>
-  `;
-}
+  el("genBtn").addEventListener("click", () => {
+    el("genOut").innerHTML = "";
+    setStatus(el("genStatus"), "");
 
-// On load
-refreshHotPreview();
+    const game = el("genGame").value;
+    const r = RULES[game];
+    const count = Math.max(1, Math.min(50, Number(el("genCount").value) || 1));
+    const avoidLastN = Math.max(0, Number(el("avoidLastN").value) || 0);
+
+    let avoid = new Set();
+    if (avoidLastN > 0 && loadDbIfExists()) {
+      const rows = rowsForGame(game);
+      const last = rows.slice(-avoidLastN);
+      last.forEach(x => avoid.add(key(x)));
+    }
+
+    let tries = 0, maxTries = 6000;
+    for (let i=0;i<count;i++) {
+      let made = null;
+      while (tries < maxTries) {
+        tries++;
+        const mains = pickUnique(r.mainMin, r.mainMax, 5);
+        const bonus = Math.floor(Math.random()*(r.bonusMax-r.bonusMin+1))+r.bonusMin;
+        const candidate = { n1:mains[0],n2:mains[1],n3:mains[2],n4:mains[3],n5:mains[4],bonus };
+        if (avoid.size && avoid.has(key(candidate))) continue;
+        made = candidate; break;
+      }
+      if (!made) { setStatus(el("genStatus"), "Could not generate. Set avoidLastN to 0.", false); break; }
+
+      const box = document.createElement("div");
+      box.className = "numbers";
+      box.textContent = `${made.n1}  ${made.n2}  ${made.n3}  ${made.n4}  ${made.n5}   +${made.bonus}`;
+      el("genOut").appendChild(box);
+    }
+
+    setStatus(el("genStatus"), `Generated ${count} set(s).` + (avoid.size ? ` Avoided last ${avoidLastN}.` : ""));
+  });
+
+  // ---------- Predict + Hot/Cold ----------
+  function weightedPickOne(weights) {
+    let total = 0;
+    for (let i=0;i<weights.length;i++) total += weights[i] || 0;
+    if (total <= 0) return null;
+    let r = Math.random() * total;
+    for (let i=0;i<weights.length;i++) {
+      const w = weights[i] || 0;
+      if (w <= 0) continue;
+      r -= w;
+      if (r <= 0) return i;
+    }
+    return null;
+  }
+
+  function buildWeightsAndCounts(game, mode, recentStrength, lastN) {
+    const rules = RULES[game];
+    const mainW = Array(rules.mainMax + 1).fill(1);
+    const bonusW = Array(rules.bonusMax + 1).fill(1);
+    const mainC = Array(rules.mainMax + 1).fill(0);
+    const bonusC = Array(rules.bonusMax + 1).fill(0);
+
+    const rows = rowsForGame(game);
+    const useRows = (lastN && lastN > 0) ? rows.slice(-lastN) : rows;
+
+    const n = useRows.length;
+    for (let idx=0; idx<n; idx++) {
+      const row = useRows[idx];
+
+      [row.n1,row.n2,row.n3,row.n4,row.n5].forEach(v => { if (v>=rules.mainMin && v<=rules.mainMax) mainC[v] += 1; });
+      if (row.bonus>=rules.bonusMin && row.bonus<=rules.bonusMax) bonusC[row.bonus] += 1;
+
+      let w = 1;
+      if (mode === "recent") {
+        const t = n <= 1 ? 1 : (idx / (n - 1));
+        w = 1 + (t * recentStrength);
+      }
+      [row.n1,row.n2,row.n3,row.n4,row.n5].forEach(v => { if (v>=rules.mainMin && v<=rules.mainMax) mainW[v] += w; });
+      if (row.bonus>=rules.bonusMin && row.bonus<=rules.bonusMax) bonusW[row.bonus] += w;
+    }
+    return { mainW, bonusW, mainC, bonusC, usedCount: useRows.length, totalCount: rows.length };
+  }
+
+  function weightedUniqueMains(mainW, rules) {
+    const picked = new Set();
+    const w = mainW.slice();
+    while (picked.size < 5) {
+      const v = weightedPickOne(w);
+      if (v === null) break;
+      if (v < rules.mainMin || v > rules.mainMax) { w[v] = 0; continue; }
+      if (!picked.has(v)) { picked.add(v); w[v] = 0; }
+    }
+    return Array.from(picked).sort((a,b)=>a-b);
+  }
+
+  function topK(weights, counts, min, max, k) {
+    const arr = [];
+    for (let i=min; i<=max; i++) arr.push({ n: i, w: weights[i] || 0, c: counts[i] || 0 });
+    arr.sort((a,b) => (b.w - a.w) || (b.c - a.c) || (a.n - b.n));
+    return arr.slice(0, k);
+  }
+
+  function bottomK(weights, counts, min, max, k) {
+    const arr = [];
+    for (let i=min; i<=max; i++) arr.push({ n: i, w: weights[i] || 0, c: counts[i] || 0 });
+    arr.sort((a,b) => (a.w - b.w) || (a.c - b.c) || (a.n - b.n));
+    return arr.slice(0, k);
+  }
+
+  function renderChip(x, displayMode) {
+    const chip = document.createElement("div");
+    chip.className = "chip";
+    if (displayMode === "c") chip.innerHTML = `${x.n} <span>c=${x.c}</span>`;
+    else if (displayMode === "w") chip.innerHTML = `${x.n} <span>w=${x.w.toFixed(1)}</span>`;
+    else chip.innerHTML = `${x.n} <span>c=${x.c}</span> <span class="sep">•</span> <span>w=${x.w.toFixed(1)}</span>`;
+    return chip;
+  }
+
+  function renderHotCold() {
+    el("hotMain").innerHTML = "";
+    el("hotBonus").innerHTML = "";
+    el("coldMain").innerHTML = "";
+    el("coldBonus").innerHTML = "";
+
+    const game = el("predGame").value;
+    const mode = el("predMode").value;
+    const recentStrength = Math.max(0, Number(el("recentStrength").value) || 0);
+    const lastN = Math.max(0, Number(el("predLastN").value) || 0);
+    const displayMode = el("hotDisplay").value;
+
+    if (!loadDbIfExists()) {
+      setStatus(el("predStatus"), "No saved DB found. Import your CSV first (Database tab).", false);
+      return false;
+    }
+
+    const rows = rowsForGame(game);
+    if (!rows.length) {
+      setStatus(el("predStatus"), "Your saved DB has no rows for this game.", false);
+      return false;
+    }
+
+    const rules = RULES[game];
+    const { mainW, bonusW, mainC, bonusC, usedCount, totalCount } = buildWeightsAndCounts(game, mode, recentStrength, lastN);
+
+    const topMain = topK(mainW, mainC, rules.mainMin, rules.mainMax, 10);
+    const topBonus = topK(bonusW, bonusC, rules.bonusMin, rules.bonusMax, 5);
+
+    const botMain = bottomK(mainW, mainC, rules.mainMin, rules.mainMax, 10);
+    const botBonus = bottomK(bonusW, bonusC, rules.bonusMin, rules.bonusMax, 5);
+
+    topMain.forEach(x => el("hotMain").appendChild(renderChip(x, displayMode)));
+    topBonus.forEach(x => el("hotBonus").appendChild(renderChip(x, displayMode)));
+
+    botMain.forEach(x => el("coldMain").appendChild(renderChip(x, displayMode)));
+    botBonus.forEach(x => el("coldBonus").appendChild(renderChip(x, displayMode)));
+
+    const basis = (lastN && lastN > 0) ? `last ${usedCount} draw(s)` : `all ${totalCount} draw(s)`;
+    const label = mode === "recent" ? `recency-weighted (strength ${recentStrength})` : "frequency only";
+    setStatus(el("predStatus"), `Hot & cold updated using ${label} from ${basis}.`);
+    return true;
+  }
+
+  // Auto-refresh: debounce
+  let hotTimer = null;
+  function scheduleHotRefresh() {
+    if (currentTab !== "pred") return;
+    if (hotTimer) clearTimeout(hotTimer);
+    hotTimer = setTimeout(() => {
+      try { renderHotCold(); } catch {}
+    }, 150);
+  }
+
+  // Predict settings -> auto refresh
+  ["predGame","predMode","recentStrength","predLastN","hotDisplay"].forEach(id => {
+    el(id).addEventListener("input", scheduleHotRefresh);
+    el(id).addEventListener("change", scheduleHotRefresh);
+  });
+
+  el("hotBtn").addEventListener("click", renderHotCold);
+
+  el("predBtn").addEventListener("click", () => {
+    el("predOut").innerHTML = "";
+    setStatus(el("predStatus"), "");
+
+    const game = el("predGame").value;
+    const rules = RULES[game];
+    const count = Math.max(1, Math.min(50, Number(el("predCount").value) || 1));
+    const mode = el("predMode").value;
+    const recentStrength = Math.max(0, Number(el("recentStrength").value) || 0);
+    const lastN = Math.max(0, Number(el("predLastN").value) || 0);
+
+    const ok = renderHotCold();
+    if (!ok) return;
+
+    const { mainW, bonusW } = buildWeightsAndCounts(game, mode, recentStrength, lastN);
+
+    for (let i=0; i<count; i++) {
+      const mains = weightedUniqueMains(mainW, rules);
+      const bonus = weightedPickOne(bonusW);
+      if (mains.length !== 5 || bonus === null) {
+        setStatus(el("predStatus"), "Could not generate weighted picks (unexpected).", false);
+        break;
+      }
+      const box = document.createElement("div");
+      box.className = "numbers";
+      box.textContent = `${mains[0]}  ${mains[1]}  ${mains[2]}  ${mains[3]}  ${mains[4]}   +${bonus}`;
+      el("predOut").appendChild(box);
+    }
+
+    setStatus(el("predStatus"), `Generated ${count} set(s). Hot/cold lists above auto-refresh with your settings.`);
+  });
+
+  // ---- Download / Clear ----
+  el("downloadBtn").addEventListener("click", () => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return;
+    const blob = new Blob([saved], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "draws_saved_backup.csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  el("clearBtn").addEventListener("click", () => {
+    if (!confirm("Delete saved database from this device?")) return;
+    localStorage.removeItem(STORAGE_KEY);
+    dbLines = [];
+    refreshTopStatus();
+    setStatus(el("loadStatus"), "Cleared. Import again to start over.");
+    setStatus(el("addStatus"), "");
+    setStatus(el("genStatus"), "");
+    setStatus(el("predStatus"), "");
+    el("genOut").innerHTML = "";
+    el("predOut").innerHTML = "";
+    el("hotMain").innerHTML = "";
+    el("hotBonus").innerHTML = "";
+    el("coldMain").innerHTML = "";
+    el("coldBonus").innerHTML = "";
+  });
+
+  // ---- Init today date + default draw date ----
+  const now = new Date();
+  const iso = now.toISOString().slice(0,10);
+  el("todayISO").textContent = iso;
+  el("todayText").textContent = now.toLocaleDateString(undefined, { weekday:"long", year:"numeric", month:"short", day:"numeric" });
+  el("drawDate").value = iso;
+
+  // Init dropdowns
+  el("gameSelect").addEventListener("change", refreshAddDropdowns);
+  refreshAddDropdowns();
+
+  // Auto-load saved DB
+  try {
+    loadFromDevice();
+    refreshTopStatus();
+    setStatus(el("loadStatus"), "Ready.");
+  } catch {
+    localStorage.removeItem(STORAGE_KEY);
+    dbLines = [];
+    refreshTopStatus();
+    setStatus(el("savedStatus"), "Saved DB was invalid and was cleared. Please import again.", false);
+  }
 </script>
 </body>
 </html>
