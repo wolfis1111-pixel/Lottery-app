@@ -7,101 +7,145 @@
   <style>
     :root { color-scheme: light; }
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 16px; background:#fafafa; }
-    h1 { font-size: 20px; margin: 0 0 8px; }
+    h1 { font-size: 20px; margin: 0 0 6px; }
     h2 { font-size: 16px; margin: 0 0 8px; }
-    .card { background:#fff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 12px; margin: 12px 0; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
-    label { display:block; font-weight: 600; margin-top: 10px; }
-    select, input, textarea, button { width: 100%; padding: 10px; font-size: 16px; margin-top: 6px; border-radius:10px; border:1px solid #ddd; background:#fff; }
-    textarea { height: 120px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .small { color:#555; font-size: 13px; line-height: 1.35; }
     .ok { color: #0a7; font-weight: 700; }
     .err { color: #c00; font-weight: 700; }
-    button { border: 0; background: #111; color: #fff; }
-    button.secondary { background: #555; }
-    button.danger { background: #b00020; }
-    button:disabled { background: #999; }
-    code { background: #f2f2f2; padding: 2px 6px; border-radius: 6px; }
-    .btnRow { display:flex; gap:10px; flex-wrap:wrap; }
-    .btnRow button { flex: 1; min-width: 140px; }
-    .numbers { font-size: 20px; font-weight: 800; padding: 10px; border: 1px dashed #999; border-radius: 12px; text-align:center; background:#fff; }
+
+    .topbar { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom: 10px; }
+    .today { text-align:right; }
+    .pill { display:inline-block; padding: 4px 10px; border-radius: 999px; background:#f1f1f1; border:1px solid #e5e5e5; font-weight:700; font-size:12px; }
+
+    .tabs { display:flex; gap:10px; margin: 10px 0 14px; }
+    .tabbtn {
+      flex:1; padding: 10px; border-radius: 12px; border:1px solid #ddd; background:#fff;
+      font-weight: 800; font-size: 14px;
+    }
+    .tabbtn.active { background:#111; color:#fff; border-color:#111; }
+
+    .card { background:#fff; border: 1px solid #e5e5e5; border-radius: 14px; padding: 12px; margin: 12px 0; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+    label { display:block; font-weight: 700; margin-top: 10px; }
+    select, input, textarea, button {
+      width: 100%; padding: 10px; font-size: 16px; margin-top: 6px;
+      border-radius: 12px; border:1px solid #ddd; background:#fff;
+    }
+    textarea { height: 110px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    button { border: 0; background:#111; color:#fff; font-weight: 800; }
+    button.secondary { background:#555; }
+    button.danger { background:#b00020; }
+    button:disabled { background:#999; }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .btnRow { display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
+    .btnRow button { flex: 1; min-width: 160px; }
+
+    .numbers { font-size: 20px; font-weight: 900; padding: 12px; border: 1px dashed #999; border-radius: 14px; text-align:center; background:#fff; }
+    .mutedBox { background:#fcfcfc; border:1px solid #eee; border-radius: 12px; padding:10px; }
+
+    .hide { display:none; }
   </style>
 </head>
 <body>
-  <h1>Lottery App (DB + Generator)</h1>
-  <div class="small">
-    Required CSV header: <code>game,draw_date,n1,n2,n3,n4,n5,bonus</code><br/>
-    game values: <code>powerball</code> or <code>ohio_lucky_for_life</code><br/>
-    Storage: saved on this device/browser (localStorage). Use “Download Backup CSV” anytime.
-  </div>
-
-  <div class="card">
-    <h2>0) Current saved database</h2>
-    <div id="savedStatus" class="small"></div>
-    <div class="btnRow" style="margin-top:10px;">
-      <button class="secondary" id="downloadBtn" disabled>Download Backup CSV</button>
-      <button class="danger" id="clearBtn" disabled>Clear Saved DB</button>
-    </div>
-    <div id="summary" class="small" style="margin-top:8px;"></div>
-  </div>
-
-  <div class="card">
-    <h2>1) Import your CSV (one time)</h2>
-    <input id="fileInput" type="file" accept=".csv,text/csv" />
-    <div id="loadStatus" class="small" style="margin-top:8px;"></div>
-    <label>Or paste CSV text here:</label>
-    <textarea id="csvText" placeholder="Paste CSV here..."></textarea>
-    <button class="secondary" id="usePastedBtn">Import & Save Pasted CSV</button>
-  </div>
-
-  <div class="card">
-    <h2>2) Add a new draw (saved automatically)</h2>
-
-    <label>Game</label>
-    <select id="gameSelect">
-      <option value="powerball">powerball</option>
-      <option value="ohio_lucky_for_life">ohio_lucky_for_life</option>
-    </select>
-
-    <label>Draw Date (YYYY-MM-DD)</label>
-    <input id="drawDate" type="text" placeholder="2025-11-23" value="2025-01-01" />
-
-    <div class="row">
-      <div><label>n1</label><select id="n1"></select></div>
-      <div><label>n2</label><select id="n2"></select></div>
-      <div><label>n3</label><select id="n3"></select></div>
-      <div><label>n4</label><select id="n4"></select></div>
-      <div><label>n5</label><select id="n5"></select></div>
-      <div><label id="bonusLabel">bonus</label><select id="bonus"></select></div>
-    </div>
-
-    <button id="addBtn" disabled>Add Draw to Database</button>
-    <div id="addStatus" class="small" style="margin-top:8px;"></div>
-  </div>
-
-  <div class="card">
-    <h2>3) Number Generator</h2>
-
-    <label>Game</label>
-    <select id="genGame">
-      <option value="powerball">powerball</option>
-      <option value="ohio_lucky_for_life">ohio_lucky_for_life</option>
-    </select>
-
-    <div class="row">
-      <div>
-        <label>How many sets?</label>
-        <input id="genCount" type="number" min="1" max="50" value="5" />
+  <div class="topbar">
+    <div>
+      <h1>Lottery App</h1>
+      <div class="small">
+        Required CSV: <code>game,draw_date,n1,n2,n3,n4,n5,bonus</code><br/>
+        game: <code>powerball</code> or <code>ohio_lucky_for_life</code>
       </div>
-      <div>
-        <label>Avoid exact matches from last N draws (optional)</label>
-        <input id="avoidLastN" type="number" min="0" max="500" value="0" />
+    </div>
+    <div class="today">
+      <div class="pill">Today</div>
+      <div id="todayText" style="font-weight:900;font-size:14px;margin-top:6px;"></div>
+      <div class="small" id="todayISO"></div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tabbtn active" id="tabDb">Database</button>
+    <button class="tabbtn" id="tabGen">Generator</button>
+  </div>
+
+  <!-- ================== DATABASE TAB ================== -->
+  <div id="viewDb">
+    <div class="card">
+      <h2>Saved database</h2>
+      <div id="savedStatus" class="small"></div>
+
+      <div class="btnRow">
+        <button class="secondary" id="downloadBtn" disabled>Download Backup CSV</button>
+        <button class="danger" id="clearBtn" disabled>Clear Saved DB</button>
+      </div>
+
+      <div id="summary" class="small" style="margin-top:8px;"></div>
+    </div>
+
+    <div class="card">
+      <h2>Import CSV (one time)</h2>
+      <input id="fileInput" type="file" accept=".csv,text/csv" />
+      <div id="loadStatus" class="small" style="margin-top:8px;"></div>
+
+      <div class="mutedBox" style="margin-top:10px;">
+        <label>Or paste CSV text:</label>
+        <textarea id="csvText" placeholder="Paste CSV here..."></textarea>
+        <button class="secondary" id="usePastedBtn">Import & Save Pasted CSV</button>
       </div>
     </div>
 
-    <button id="genBtn">Generate</button>
-    <div id="genOut" style="margin-top:10px; display:grid; gap:10px;"></div>
-    <div id="genStatus" class="small" style="margin-top:8px;"></div>
+    <div class="card">
+      <h2>Add a new draw (date picker + dropdowns)</h2>
+
+      <label>Game</label>
+      <select id="gameSelect">
+        <option value="powerball">powerball</option>
+        <option value="ohio_lucky_for_life">ohio_lucky_for_life</option>
+      </select>
+
+      <label>Draw Date</label>
+      <input id="drawDate" type="date" />
+
+      <div class="row">
+        <div><label>n1</label><select id="n1"></select></div>
+        <div><label>n2</label><select id="n2"></select></div>
+        <div><label>n3</label><select id="n3"></select></div>
+        <div><label>n4</label><select id="n4"></select></div>
+        <div><label>n5</label><select id="n5"></select></div>
+        <div><label id="bonusLabel">bonus</label><select id="bonus"></select></div>
+      </div>
+
+      <button id="addBtn" disabled>Add Draw to Database</button>
+      <div id="addStatus" class="small" style="margin-top:8px;"></div>
+    </div>
+  </div>
+
+  <!-- ================== GENERATOR TAB ================== -->
+  <div id="viewGen" class="hide">
+    <div class="card">
+      <h2>Number Generator</h2>
+
+      <label>Game</label>
+      <select id="genGame">
+        <option value="powerball">powerball</option>
+        <option value="ohio_lucky_for_life">ohio_lucky_for_life</option>
+      </select>
+
+      <div class="row">
+        <div>
+          <label>How many sets?</label>
+          <input id="genCount" type="number" min="1" max="50" value="5" />
+        </div>
+        <div>
+          <label>Avoid exact matches from last N draws</label>
+          <input id="avoidLastN" type="number" min="0" max="500" value="0" />
+        </div>
+      </div>
+
+      <button id="genBtn">Generate</button>
+
+      <div id="genOut" style="margin-top:10px; display:grid; gap:10px;"></div>
+      <div id="genStatus" class="small" style="margin-top:8px;"></div>
+    </div>
   </div>
 
 <script>
@@ -132,6 +176,7 @@
     const lines = trimmed.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     if (!lines.length) throw new Error("CSV has no lines.");
     if (lines[0] !== REQUIRED_HEADER) throw new Error("CSV columns must be: " + REQUIRED_HEADER);
+
     for (let i=1; i<lines.length; i++) {
       const parts = lines[i].split(",").map(x=>x.trim());
       if (parts.length !== 8) throw new Error(`Bad row at line ${i+1}: expected 8 columns.`);
@@ -205,7 +250,7 @@
   function refreshTopStatus() {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
-      setStatus(el("savedStatus"), "Saved DB found on this device. Import optional; you can add draws and generate now.");
+      setStatus(el("savedStatus"), "Saved DB found on this device.");
       el("downloadBtn").disabled = false;
       el("clearBtn").disabled = false;
       el("addBtn").disabled = false;
@@ -219,7 +264,22 @@
     }
   }
 
-  // Import
+  // ---- Tabs ----
+  function showTab(which) {
+    const db = el("viewDb"), gen = el("viewGen");
+    const b1 = el("tabDb"), b2 = el("tabGen");
+    if (which === "db") {
+      db.classList.remove("hide"); gen.classList.add("hide");
+      b1.classList.add("active"); b2.classList.remove("active");
+    } else {
+      gen.classList.remove("hide"); db.classList.add("hide");
+      b2.classList.add("active"); b1.classList.remove("active");
+    }
+  }
+  el("tabDb").addEventListener("click", () => showTab("db"));
+  el("tabGen").addEventListener("click", () => showTab("gen"));
+
+  // ---- Import ----
   el("fileInput").addEventListener("change", async (e) => {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -233,20 +293,20 @@
     catch (err) { setStatus(el("loadStatus"), err.message || "Failed to import CSV", false); }
   });
 
-  // Add draw
+  // ---- Add draw ----
   el("addBtn").addEventListener("click", () => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (!saved) { setStatus(el("addStatus"), "Import CSV first.", false); return; }
     try { dbLines = parseCsv(saved); } catch { setStatus(el("addStatus"), "Saved DB is corrupted. Re-import.", false); return; }
 
     const game = el("gameSelect").value;
-    const draw_date = el("drawDate").value.trim();
+    const draw_date = el("drawDate").value; // from date picker (YYYY-MM-DD)
     const r = RULES[game];
 
     const n1=+el("n1").value, n2=+el("n2").value, n3=+el("n3").value, n4=+el("n4").value, n5=+el("n5").value, bonus=+el("bonus").value;
     const mains=[n1,n2,n3,n4,n5];
 
-    if (!isISODate(draw_date)) { setStatus(el("addStatus"), "Invalid draw_date. Use YYYY-MM-DD.", false); return; }
+    if (!isISODate(draw_date)) { setStatus(el("addStatus"), "Pick a draw date.", false); return; }
     if (new Set(mains).size !== 5) { setStatus(el("addStatus"), "n1..n5 must be unique.", false); return; }
 
     const inRange = (x,min,max)=>Number.isFinite(x)&&x>=min&&x<=max;
@@ -260,12 +320,24 @@
     setStatus(el("addStatus"), "Added and saved (last line = last drawn).");
   });
 
-  // Generator
+  // ---- Generator ----
   function pickUnique(min, max, count) {
     const set = new Set();
     while (set.size < count) set.add(Math.floor(Math.random()*(max-min+1))+min);
     return Array.from(set).sort((a,b)=>a-b);
   }
+
+  function csvRowsForGame(game) {
+    // optional; used to avoid last N exact matches
+    const rows = [];
+    for (let i=1;i<dbLines.length;i++) {
+      const [g, d, n1,n2,n3,n4,n5,bonus] = dbLines[i].split(",").map(x=>x.trim());
+      if (g !== game) continue;
+      rows.push({ d, n1:+n1,n2:+n2,n3:+n3,n4:+n4,n5:+n5,bonus:+bonus });
+    }
+    return rows;
+  }
+  function key(draw){ return `${draw.n1}-${draw.n2}-${draw.n3}-${draw.n4}-${draw.n5}|${draw.bonus}`; }
 
   el("genBtn").addEventListener("click", () => {
     el("genOut").innerHTML = "";
@@ -274,19 +346,45 @@
     const game = el("genGame").value;
     const r = RULES[game];
     const count = Math.max(1, Math.min(50, Number(el("genCount").value) || 1));
+    const avoidLastN = Math.max(0, Number(el("avoidLastN").value) || 0);
 
-    for (let i=0; i<count; i++) {
-      const mains = pickUnique(r.mainMin, r.mainMax, 5);
-      const bonus = Math.floor(Math.random()*(r.bonusMax-r.bonusMin+1))+r.bonusMin;
+    // Load DB if present
+    const saved = localStorage.getItem(STORAGE_KEY);
+    let avoid = new Set();
+    if (saved) {
+      try {
+        dbLines = parseCsv(saved);
+        if (avoidLastN > 0) {
+          const rows = csvRowsForGame(game);
+          const last = rows.slice(-avoidLastN);
+          last.forEach(x => avoid.add(key(x)));
+        }
+      } catch {}
+    }
+
+    let tries = 0, maxTries = 6000;
+    for (let i=0;i<count;i++) {
+      let made = null;
+      while (tries < maxTries) {
+        tries++;
+        const mains = pickUnique(r.mainMin, r.mainMax, 5);
+        const bonus = Math.floor(Math.random()*(r.bonusMax-r.bonusMin+1))+r.bonusMin;
+        const candidate = { n1:mains[0],n2:mains[1],n3:mains[2],n4:mains[3],n5:mains[4],bonus };
+        if (avoid.size && avoid.has(key(candidate))) continue;
+        made = candidate; break;
+      }
+      if (!made) { setStatus(el("genStatus"), "Could not generate. Set avoidLastN to 0.", false); break; }
+
       const box = document.createElement("div");
       box.className = "numbers";
-      box.textContent = `${mains[0]}  ${mains[1]}  ${mains[2]}  ${mains[3]}  ${mains[4]}   +${bonus}`;
+      box.textContent = `${made.n1}  ${made.n2}  ${made.n3}  ${made.n4}  ${made.n5}   +${made.bonus}`;
       el("genOut").appendChild(box);
     }
-    setStatus(el("genStatus"), `Generated ${count} set(s).`);
+
+    setStatus(el("genStatus"), `Generated ${count} set(s).` + (avoid.size ? ` Avoided last ${avoidLastN}.` : ""));
   });
 
-  // Download / Clear
+  // ---- Download / Clear ----
   el("downloadBtn").addEventListener("click", () => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (!saved) return;
@@ -312,14 +410,22 @@
     el("genOut").innerHTML = "";
   });
 
-  // Init
+  // ---- Init today date + default draw date ----
+  const now = new Date();
+  const iso = now.toISOString().slice(0,10);
+  el("todayISO").textContent = iso;
+  el("todayText").textContent = now.toLocaleDateString(undefined, { weekday:"long", year:"numeric", month:"short", day:"numeric" });
+  el("drawDate").value = iso; // default picker to today
+
+  // Init dropdowns
   el("gameSelect").addEventListener("change", refreshAddDropdowns);
   refreshAddDropdowns();
 
+  // Auto-load saved DB
   try {
     loadFromDevice();
     refreshTopStatus();
-    setStatus(el("loadStatus"), "Loaded OK. If you imported before, DB auto-loads.");
+    setStatus(el("loadStatus"), "Ready.");
   } catch {
     localStorage.removeItem(STORAGE_KEY);
     dbLines = [];
