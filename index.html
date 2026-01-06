@@ -5,25 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Lottery App (DB + Generator)</title>
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 16px; }
+    :root { color-scheme: light; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 16px; background:#fafafa; }
     h1 { font-size: 20px; margin: 0 0 8px; }
     h2 { font-size: 16px; margin: 0 0 8px; }
-    .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin: 12px 0; }
+    .card { background:#fff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 12px; margin: 12px 0; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
     label { display:block; font-weight: 600; margin-top: 10px; }
-    select, input, textarea, button { width: 100%; padding: 10px; font-size: 16px; margin-top: 6px; }
-    textarea { height: 140px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    select, input, textarea, button { width: 100%; padding: 10px; font-size: 16px; margin-top: 6px; border-radius:10px; border:1px solid #ddd; background:#fff; }
+    textarea { height: 120px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .small { color:#555; font-size: 13px; }
+    .small { color:#555; font-size: 13px; line-height: 1.35; }
     .ok { color: #0a7; font-weight: 700; }
     .err { color: #c00; font-weight: 700; }
-    button { border: 0; border-radius: 10px; background: #111; color: #fff; }
+    button { border: 0; background: #111; color: #fff; }
     button.secondary { background: #555; }
     button.danger { background: #b00020; }
     button:disabled { background: #999; }
-    code { background: #f5f5f5; padding: 2px 6px; border-radius: 6px; }
+    code { background: #f2f2f2; padding: 2px 6px; border-radius: 6px; }
     .btnRow { display:flex; gap:10px; flex-wrap:wrap; }
     .btnRow button { flex: 1; min-width: 140px; }
-    .numbers { font-size: 20px; font-weight: 800; padding: 10px; border: 1px dashed #999; border-radius: 12px; text-align:center; }
+    .numbers { font-size: 20px; font-weight: 800; padding: 10px; border: 1px dashed #999; border-radius: 12px; text-align:center; background:#fff; }
   </style>
 </head>
 <body>
@@ -34,31 +35,25 @@
     Storage: saved on this device/browser (localStorage). Use “Download Backup CSV” anytime.
   </div>
 
-  <!-- 0) Saved DB status -->
   <div class="card">
     <h2>0) Current saved database</h2>
     <div id="savedStatus" class="small"></div>
-
     <div class="btnRow" style="margin-top:10px;">
       <button class="secondary" id="downloadBtn" disabled>Download Backup CSV</button>
       <button class="danger" id="clearBtn" disabled>Clear Saved DB</button>
     </div>
-
     <div id="summary" class="small" style="margin-top:8px;"></div>
   </div>
 
-  <!-- 1) Import CSV -->
   <div class="card">
     <h2>1) Import your CSV (one time)</h2>
     <input id="fileInput" type="file" accept=".csv,text/csv" />
     <div id="loadStatus" class="small" style="margin-top:8px;"></div>
-
     <label>Or paste CSV text here:</label>
     <textarea id="csvText" placeholder="Paste CSV here..."></textarea>
     <button class="secondary" id="usePastedBtn">Import & Save Pasted CSV</button>
   </div>
 
-  <!-- 2) Add draw -->
   <div class="card">
     <h2>2) Add a new draw (saved automatically)</h2>
 
@@ -84,7 +79,6 @@
     <div id="addStatus" class="small" style="margin-top:8px;"></div>
   </div>
 
-  <!-- 3) Generator -->
   <div class="card">
     <h2>3) Number Generator</h2>
 
@@ -106,7 +100,6 @@
     </div>
 
     <button id="genBtn">Generate</button>
-
     <div id="genOut" style="margin-top:10px; display:grid; gap:10px;"></div>
     <div id="genStatus" class="small" style="margin-top:8px;"></div>
   </div>
@@ -120,14 +113,11 @@
     ohio_lucky_for_life: { mainMin: 1, mainMax: 48, bonusMin: 1, bonusMax: 18, bonusLabel: "Lucky Ball" }
   };
 
-  let dbLines = []; // header + rows
-
+  let dbLines = [];
   const el = (id) => document.getElementById(id);
 
   function setStatus(target, msg, ok=true) {
-    target.innerHTML = msg
-      ? (ok ? `<span class="ok">${msg}</span>` : `<span class="err">${msg}</span>`)
-      : "";
+    target.innerHTML = msg ? (ok ? `<span class="ok">${msg}</span>` : `<span class="err">${msg}</span>`) : "";
   }
 
   function isISODate(s) {
@@ -141,16 +131,12 @@
     if (!trimmed) throw new Error("CSV is empty.");
     const lines = trimmed.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     if (!lines.length) throw new Error("CSV has no lines.");
-    if (lines[0] !== REQUIRED_HEADER) {
-      throw new Error("CSV columns must be: " + REQUIRED_HEADER);
-    }
+    if (lines[0] !== REQUIRED_HEADER) throw new Error("CSV columns must be: " + REQUIRED_HEADER);
     for (let i=1; i<lines.length; i++) {
       const parts = lines[i].split(",").map(x=>x.trim());
       if (parts.length !== 8) throw new Error(`Bad row at line ${i+1}: expected 8 columns.`);
       const [game, draw_date] = parts;
-      if (game !== "powerball" && game !== "ohio_lucky_for_life") {
-        throw new Error(`Bad game at line ${i+1}: ${game}`);
-      }
+      if (game !== "powerball" && game !== "ohio_lucky_for_life") throw new Error(`Bad game at line ${i+1}: ${game}`);
       if (!isISODate(draw_date)) throw new Error(`Bad draw_date at line ${i+1}: ${draw_date}`);
       const nums = parts.slice(2).map(Number);
       if (nums.some(x => !Number.isFinite(x))) throw new Error(`Non-numeric value at line ${i+1}`);
@@ -170,19 +156,9 @@
     return true;
   }
 
-  function clearDevice() {
-    localStorage.removeItem(STORAGE_KEY);
-    dbLines = [];
-    refreshTopStatus();
-  }
+  function range(min, max) { return Array.from({length:max-min+1}, (_,i)=>i+min); }
 
-  function range(min, max) {
-    const out = [];
-    for (let i=min; i<=max; i++) out.push(i);
-    return out;
-  }
-
-  function fillSelect(sel, options, defaultValue) {
+  function fillSelect(sel, options, def) {
     sel.innerHTML = "";
     for (const v of options) {
       const opt = document.createElement("option");
@@ -190,53 +166,21 @@
       opt.textContent = String(v);
       sel.appendChild(opt);
     }
-    if (defaultValue != null) sel.value = String(defaultValue);
+    sel.value = String(def);
   }
 
-  function refreshDropdowns(prefixGameSelectId, prefixBonusLabelId, ids) {
-    const game = el(prefixGameSelectId).value;
-    const r = RULES[game];
-
-    if (prefixBonusLabelId) el(prefixBonusLabelId).textContent = "bonus (" + r.bonusLabel + ")";
-
-    const mainOpts = range(r.mainMin, r.mainMax);
-    fillSelect(el(ids.n1), mainOpts, r.mainMin);
-    fillSelect(el(ids.n2), mainOpts, r.mainMin+1);
-    fillSelect(el(ids.n3), mainOpts, r.mainMin+2);
-    fillSelect(el(ids.n4), mainOpts, r.mainMin+3);
-    fillSelect(el(ids.n5), mainOpts, r.mainMin+4);
-
-    const bonusOpts = range(r.bonusMin, r.bonusMax);
-    fillSelect(el(ids.bonus), bonusOpts, r.bonusMin);
-  }
-
-  function currentRow() {
+  function refreshAddDropdowns() {
     const game = el("gameSelect").value;
-    const draw_date = el("drawDate").value.trim();
-    const n1 = Number(el("n1").value);
-    const n2 = Number(el("n2").value);
-    const n3 = Number(el("n3").value);
-    const n4 = Number(el("n4").value);
-    const n5 = Number(el("n5").value);
-    const bonus = Number(el("bonus").value);
-    return { game, draw_date, n1,n2,n3,n4,n5,bonus };
-  }
-
-  function rowToLine(r) {
-    return `${r.game},${r.draw_date},${r.n1},${r.n2},${r.n3},${r.n4},${r.n5},${r.bonus}`;
-  }
-
-  function csvToRows() {
-    // returns objects from dbLines
-    const rows = [];
-    for (let i=1;i<dbLines.length;i++) {
-      const [game, draw_date, n1,n2,n3,n4,n5,bonus] = dbLines[i].split(",").map(x=>x.trim());
-      rows.push({
-        game, draw_date,
-        n1:+n1, n2:+n2, n3:+n3, n4:+n4, n5:+n5, bonus:+bonus
-      });
-    }
-    return rows;
+    const r = RULES[game];
+    el("bonusLabel").textContent = "bonus (" + r.bonusLabel + ")";
+    const mainOpts = range(r.mainMin, r.mainMax);
+    fillSelect(el("n1"), mainOpts, r.mainMin);
+    fillSelect(el("n2"), mainOpts, r.mainMin+1);
+    fillSelect(el("n3"), mainOpts, r.mainMin+2);
+    fillSelect(el("n4"), mainOpts, r.mainMin+3);
+    fillSelect(el("n5"), mainOpts, r.mainMin+4);
+    const bonusOpts = range(r.bonusMin, r.bonusMax);
+    fillSelect(el("bonus"), bonusOpts, r.bonusMin);
   }
 
   function hasDuplicate(game, draw_date) {
@@ -261,7 +205,7 @@
   function refreshTopStatus() {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
-      setStatus(el("savedStatus"), "Saved DB found on this device. You can add draws and generate now.");
+      setStatus(el("savedStatus"), "Saved DB found on this device. Import optional; you can add draws and generate now.");
       el("downloadBtn").disabled = false;
       el("clearBtn").disabled = false;
       el("addBtn").disabled = false;
@@ -275,14 +219,113 @@
     }
   }
 
-  // ---------- IMPORT ----------
+  // Import
   el("fileInput").addEventListener("change", async (e) => {
     const f = e.target.files?.[0];
     if (!f) return;
     const text = await f.text();
-    try {
-      dbLines = parseCsv(text);
-      saveToDevice();
-      setStatus(el("loadStatus"), "CSV imported and saved to this device.");
-    } catch (err) {
-      setStatus(el("loadStatus"),
+    try { dbLines = parseCsv(text); saveToDevice(); setStatus(el("loadStatus"), "CSV imported and saved."); }
+    catch (err) { setStatus(el("loadStatus"), err.message || "Failed to import CSV", false); }
+  });
+
+  el("usePastedBtn").addEventListener("click", () => {
+    try { dbLines = parseCsv(el("csvText").value); saveToDevice(); setStatus(el("loadStatus"), "Pasted CSV imported and saved."); }
+    catch (err) { setStatus(el("loadStatus"), err.message || "Failed to import CSV", false); }
+  });
+
+  // Add draw
+  el("addBtn").addEventListener("click", () => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) { setStatus(el("addStatus"), "Import CSV first.", false); return; }
+    try { dbLines = parseCsv(saved); } catch { setStatus(el("addStatus"), "Saved DB is corrupted. Re-import.", false); return; }
+
+    const game = el("gameSelect").value;
+    const draw_date = el("drawDate").value.trim();
+    const r = RULES[game];
+
+    const n1=+el("n1").value, n2=+el("n2").value, n3=+el("n3").value, n4=+el("n4").value, n5=+el("n5").value, bonus=+el("bonus").value;
+    const mains=[n1,n2,n3,n4,n5];
+
+    if (!isISODate(draw_date)) { setStatus(el("addStatus"), "Invalid draw_date. Use YYYY-MM-DD.", false); return; }
+    if (new Set(mains).size !== 5) { setStatus(el("addStatus"), "n1..n5 must be unique.", false); return; }
+
+    const inRange = (x,min,max)=>Number.isFinite(x)&&x>=min&&x<=max;
+    if (!mains.every(x=>inRange(x,r.mainMin,r.mainMax))) { setStatus(el("addStatus"), `Main numbers must be ${r.mainMin}-${r.mainMax}.`, false); return; }
+    if (!inRange(bonus,r.bonusMin,r.bonusMax)) { setStatus(el("addStatus"), `Bonus must be ${r.bonusMin}-${r.bonusMax}.`, false); return; }
+
+    if (hasDuplicate(game, draw_date)) { setStatus(el("addStatus"), "That game + draw_date already exists.", false); return; }
+
+    dbLines.push(`${game},${draw_date},${n1},${n2},${n3},${n4},${n5},${bonus}`);
+    saveToDevice();
+    setStatus(el("addStatus"), "Added and saved (last line = last drawn).");
+  });
+
+  // Generator
+  function pickUnique(min, max, count) {
+    const set = new Set();
+    while (set.size < count) set.add(Math.floor(Math.random()*(max-min+1))+min);
+    return Array.from(set).sort((a,b)=>a-b);
+  }
+
+  el("genBtn").addEventListener("click", () => {
+    el("genOut").innerHTML = "";
+    setStatus(el("genStatus"), "");
+
+    const game = el("genGame").value;
+    const r = RULES[game];
+    const count = Math.max(1, Math.min(50, Number(el("genCount").value) || 1));
+
+    for (let i=0; i<count; i++) {
+      const mains = pickUnique(r.mainMin, r.mainMax, 5);
+      const bonus = Math.floor(Math.random()*(r.bonusMax-r.bonusMin+1))+r.bonusMin;
+      const box = document.createElement("div");
+      box.className = "numbers";
+      box.textContent = `${mains[0]}  ${mains[1]}  ${mains[2]}  ${mains[3]}  ${mains[4]}   +${bonus}`;
+      el("genOut").appendChild(box);
+    }
+    setStatus(el("genStatus"), `Generated ${count} set(s).`);
+  });
+
+  // Download / Clear
+  el("downloadBtn").addEventListener("click", () => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return;
+    const blob = new Blob([saved], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "draws_saved_backup.csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  el("clearBtn").addEventListener("click", () => {
+    if (!confirm("Delete saved database from this device?")) return;
+    localStorage.removeItem(STORAGE_KEY);
+    dbLines = [];
+    refreshTopStatus();
+    setStatus(el("loadStatus"), "Cleared. Import again to start over.");
+    setStatus(el("addStatus"), "");
+    setStatus(el("genStatus"), "");
+    el("genOut").innerHTML = "";
+  });
+
+  // Init
+  el("gameSelect").addEventListener("change", refreshAddDropdowns);
+  refreshAddDropdowns();
+
+  try {
+    loadFromDevice();
+    refreshTopStatus();
+    setStatus(el("loadStatus"), "Loaded OK. If you imported before, DB auto-loads.");
+  } catch {
+    localStorage.removeItem(STORAGE_KEY);
+    dbLines = [];
+    refreshTopStatus();
+    setStatus(el("savedStatus"), "Saved DB was invalid and was cleared. Please import again.", false);
+  }
+</script>
+</body>
+</html>
