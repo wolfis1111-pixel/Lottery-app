@@ -1,0 +1,1045 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lottery App v18</title>
+<style>
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:16px;background:#fafafa}
+  .top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+  h1{font-size:20px;margin:0 0 6px}
+  .small{font-size:13px;color:#555;line-height:1.35}
+  .pill{display:inline-block;padding:4px 10px;border-radius:999px;background:#f1f1f1;border:1px solid #e5e5e5;font-weight:800;font-size:12px}
+
+  .tabs{display:flex;gap:10px;margin:12px 0}
+  .tab{
+    flex:1;
+    padding:12px;
+    border-radius:14px;
+    border:2px solid #8ab4ff;
+    background:#eaf2ff;
+    color:#0b2a5a;
+    font-weight:950;
+    font-size:15px;
+  }
+  .tab:hover{filter:brightness(0.98)}
+  .tab:active{transform:scale(0.99)}
+  .tab.active{background:#111;color:#fff;border-color:#111}
+
+  .card{background:#fff;border:1px solid #e5e5e5;border-radius:16px;padding:14px;margin:14px 0;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+  label{display:block;font-weight:900;margin-top:10px}
+  select,input,textarea,button{width:100%;padding:10px;font-size:16px;margin-top:6px;border-radius:12px;border:1px solid #ddd;background:#fff}
+  textarea{height:110px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  button{border:0;background:#111;color:#fff;font-weight:900}
+  button.secondary{background:#555}
+  button.danger{background:#b00020}
+  button:disabled{background:#999}
+
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+  .btnrow button{flex:1;min-width:160px}
+  .numbers{font-size:20px;font-weight:950;padding:12px;border:2px dashed #999;border-radius:14px;text-align:center;background:#fff}
+  .note{background:#fff7e6;border:1px solid #ffe2a8;padding:10px;border-radius:12px}
+  .ok{color:#0a7;font-weight:800}
+  .err{color:#c00;font-weight:800}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#fff;border:1px solid #e5e5e5;font-weight:900;font-size:13px}
+  .chip span{font-weight:800;color:#666;font-size:12px}
+  .sep{color:#bbb;font-weight:900}
+
+  #viewGen,#viewPred,#viewBeta{display:none}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div>
+    <h1>Lottery App <span class="pill">v18</span></h1>
+    <div class="small">
+      Required CSV columns:<br>
+      <code>game,draw_date,n1,n2,n3,n4,n5,bonus</code><br>
+      game values: <code>powerball</code> or <code>ohio_lucky_for_life</code>
+    </div>
+  </div>
+  <div style="text-align:right">
+    <div class="pill">Today</div>
+    <div id="todayPretty" style="font-weight:950;margin-top:6px"></div>
+    <div id="todayISO" class="small"></div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" id="tDb">Database</button>
+  <button class="tab" id="tGen">Generator</button>
+  <button class="tab" id="tPred">Predict</button>
+  <button class="tab" id="tBeta">Beta</button>
+</div>
+
+<!-- DATABASE -->
+<div id="viewDb">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+      <div>
+        <div style="font-weight:950">Saved database</div>
+        <div id="savedStatus" class="small"></div>
+        <div id="autoStatus" class="small" style="margin-top:6px"></div>
+        <div id="jsErrorBox" class="small" style="margin-top:6px"></div>
+      </div>
+      <div class="pill" id="jsStatus">JS: loading…</div>
+    </div>
+
+    <div class="btnrow">
+      <button class="secondary" id="updatePbBtn">Update Powerball Now (NY data)</button>
+      <button class="secondary" id="downloadBtn" disabled>Download Backup CSV</button>
+      <button class="danger" id="clearBtn" disabled>Clear Saved DB</button>
+    </div>
+    <div id="summary" class="small" style="margin-top:8px"></div>
+  </div>
+
+  <div class="card">
+    <div style="font-weight:950">Import CSV</div>
+    <input id="fileInput" type="file" accept=".csv,text/csv" />
+    <div id="loadStatus" class="small" style="margin-top:8px"></div>
+
+    <div class="card" style="box-shadow:none;margin:10px 0 0;background:#fcfcfc">
+      <label>Or paste CSV text</label>
+      <textarea id="csvText" placeholder="Paste CSV here…"></textarea>
+      <button class="secondary" id="usePastedBtn">Import & Save Pasted CSV</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="font-weight:950">Add a new draw (date + dropdowns)</div>
+
+    <label>Game</label>
+    <select id="addGame">
+      <option value="powerball">powerball</option>
+      <option value="ohio_lucky_for_life">ohio_lucky_for_life</option>
+    </select>
+
+    <label>Draw Date</label>
+    <input id="addDate" type="date" />
+
+    <div class="row">
+      <div><label>n1</label><select id="a1"></select></div>
+      <div><label>n2</label><select id="a2"></select></div>
+      <div><label>n3</label><select id="a3"></select></div>
+      <div><label>n4</label><select id="a4"></select></div>
+      <div><label>n5</label><select id="a5"></select></div>
+      <div><label id="bonusLbl">bonus</label><select id="ab"></select></div>
+    </div>
+
+    <button id="addBtn" disabled>Add Draw to Database</button>
+    <div id="addStatus" class="small" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<!-- GENERATOR -->
+<div id="viewGen">
+  <div class="card">
+    <div style="font-weight:950">Random Generator</div>
+
+    <label>Game</label>
+    <select id="genGame">
+      <option value="powerball">powerball</option>
+      <option value="ohio_lucky_for_life">ohio_lucky_for_life</option>
+    </select>
+
+    <div class="row">
+      <div><label>How many sets?</label><input id="genCount" type="number" min="1" max="50" value="5"></div>
+      <div><label>Avoid exact matches from last N draws</label><input id="avoidLastN" type="number" min="0" max="500" value="0"></div>
+    </div>
+
+    <button id="genBtn">Generate</button>
+    <div id="genOut" style="margin-top:10px;display:grid;gap:10px"></div>
+    <div id="genStatus" class="small" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<!-- PREDICT -->
+<div id="viewPred">
+  <div class="card">
+    <div style="font-weight:950">Predict (Hot & Cold)</div>
+    <div class="note small" style="margin-top:10px">
+      This does <b>not</b> predict the lottery. It generates <b>weighted</b> picks from your saved history.
+    </div>
+
+    <label>Game</label>
+    <select id="predGame">
+      <option value="powerball">powerball</option>
+      <option value="ohio_lucky_for_life">ohio_lucky_for_life</option>
+    </select>
+
+    <div class="row">
+      <div><label>How many sets?</label><input id="predCount" type="number" min="1" max="50" value="5"></div>
+      <div>
+        <label>Weighting</label>
+        <select id="predMode">
+          <option value="freq">Frequency only</option>
+          <option value="recent">Recency-weighted</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Recency strength</label>
+        <input id="recentStrength" type="number" min="0" max="10" step="0.5" value="3">
+        <div class="small">Higher = recent draws count more.</div>
+      </div>
+      <div>
+        <label>Use last N draws (0=all)</label>
+        <input id="predLastN" type="number" min="0" max="2000" value="0">
+      </div>
+    </div>
+
+    <label>Display</label>
+    <select id="displayMode">
+      <option value="w">Weights only</option>
+      <option value="c">Counts only</option>
+      <option value="cw">Counts + Weights</option>
+    </select>
+
+    <div class="btnrow">
+      <button class="secondary" id="refreshHC">Refresh Hot/Cold</button>
+      <button id="predBtn">Generate Most Likely</button>
+    </div>
+
+    <div class="card" style="box-shadow:none;background:#fcfcff">
+      <div style="font-weight:950;margin-bottom:6px">Hot Main (Top 10)</div>
+      <div class="chips" id="hotMain"></div>
+      <div style="font-weight:950;margin:10px 0 6px">Hot Bonus (Top 5)</div>
+      <div class="chips" id="hotBonus"></div>
+    </div>
+
+    <div class="card" style="box-shadow:none;background:#fffafa">
+      <div style="font-weight:950;margin-bottom:6px">Cold Main (Bottom 10)</div>
+      <div class="chips" id="coldMain"></div>
+      <div style="font-weight:950;margin:10px 0 6px">Cold Bonus (Bottom 5)</div>
+      <div class="chips" id="coldBonus"></div>
+    </div>
+
+    <div id="predOut" style="margin-top:10px;display:grid;gap:10px"></div>
+    <div id="predStatus" class="small" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<!-- BETA -->
+<div id="viewBeta">
+  <div class="card">
+    <div style="font-weight:950">Beta — “Overdue + Rare” Powerball Generator</div>
+
+    <div class="note small" style="margin-top:10px">
+      Uses your saved <b>powerball</b> history only. It favors numbers that were drawn <b>least often</b> and
+      have not appeared for the <b>longest time</b>. This is still not a real prediction.
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Use last N Powerball draws (0=all)</label>
+        <input id="betaLastN" type="number" min="0" max="5000" value="0">
+      </div>
+      <div>
+        <label>Randomness (0=deterministic)</label>
+        <input id="betaRand" type="number" min="0" max="1" step="0.05" value="0.25">
+        <div class="small">Higher = more variety; lower = more “top score” picks.</div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Overdue weight</label>
+        <input id="betaWOver" type="number" min="0" max="10" step="0.5" value="6">
+      </div>
+      <div>
+        <label>Rare weight</label>
+        <input id="betaWRare" type="number" min="0" max="10" step="0.5" value="4">
+      </div>
+    </div>
+
+    <div class="btnrow">
+      <button class="secondary" id="betaRefreshBtn">Refresh Overdue/Rare Lists</button>
+      <button id="betaBtn">Generate 1 “Overdue + Rare” Line</button>
+      <button class="secondary" id="betaCopyBtn" disabled>Copy Generated Line</button>
+    </div>
+
+    <div id="betaOut" style="margin-top:10px;display:grid;gap:10px"></div>
+    <div id="betaStatus" class="small" style="margin-top:8px"></div>
+
+    <div class="card" style="box-shadow:none;background:#fcfcfc;margin-top:12px">
+      <div style="font-weight:950;margin-bottom:6px">What it’s using</div>
+      <div class="small" id="betaMeta"></div>
+    </div>
+
+    <div class="card" style="box-shadow:none;background:#fcfcff;margin-top:12px">
+      <div style="font-weight:950;margin-bottom:6px">Top 10 Most Overdue (Main)</div>
+      <div class="chips" id="betaOverMain"></div>
+      <div style="font-weight:950;margin:12px 0 6px">Top 5 Most Overdue (Powerball Bonus)</div>
+      <div class="chips" id="betaOverBonus"></div>
+    </div>
+
+    <div class="card" style="box-shadow:none;background:#fffafa;margin-top:12px">
+      <div style="font-weight:950;margin-bottom:6px">Top 10 Rarest (Main)</div>
+      <div class="chips" id="betaRareMain"></div>
+      <div style="font-weight:950;margin:12px 0 6px">Top 5 Rarest (Powerball Bonus)</div>
+      <div class="chips" id="betaRareBonus"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const REQUIRED = "game,draw_date,n1,n2,n3,n4,n5,bonus";
+  const KEY = "LOTTERY_DRAW_DB_CSV_V1";
+
+  // NY Open Data "download JSON" endpoint (reliable in browsers)
+  const NY_ROWS_JSON = "https://data.ny.gov/api/views/d6yy-54nr/rows.json?accessType=DOWNLOAD";
+
+  const RULES = {
+    powerball: {mainMin:1, mainMax:69, bonusMin:1, bonusMax:26, bonusLabel:"Powerball"},
+    ohio_lucky_for_life: {mainMin:1, mainMax:48, bonusMin:1, bonusMax:18, bonusLabel:"Lucky Ball"}
+  };
+
+  const $ = (id) => document.getElementById(id);
+
+  // Never guess again: show JS errors on-screen
+  function showJsError(msg){
+    const box = $("jsErrorBox");
+    if(!box) return;
+    box.innerHTML = `<span class="err">JS Error: ${msg}</span>`;
+  }
+  window.addEventListener("error", (e) => {
+    showJsError(e?.message || "Unknown error");
+  });
+  window.addEventListener("unhandledrejection", (e) => {
+    const m = (e && e.reason && e.reason.message) ? e.reason.message : String(e.reason || "Unhandled rejection");
+    showJsError(m);
+  });
+
+  // If this does not change to OK, JS didn't run
+  $("jsStatus").textContent = "JS: OK";
+
+  // today
+  const now = new Date();
+  const iso = now.toISOString().slice(0,10);
+  $("todayISO").textContent = iso;
+  $("todayPretty").textContent = now.toLocaleDateString(undefined,{weekday:"long",year:"numeric",month:"short",day:"numeric"});
+  $("addDate").value = iso;
+
+  function setStatus(el,msg,ok=true){ el.innerHTML = msg ? `<span class="${ok?"ok":"err"}">${msg}</span>` : ""; }
+  function isISODate(s){ return /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(new Date(s+"T00:00:00").getTime()); }
+
+  function parseCsv(text){
+    const t = (text||"").trim();
+    if(!t) throw new Error("CSV is empty.");
+    const lines = t.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+    if(lines[0] !== REQUIRED) throw new Error("CSV columns must be: " + REQUIRED);
+    for(let i=1;i<lines.length;i++){
+      const p = lines[i].split(",").map(x=>x.trim());
+      if(p.length!==8) throw new Error(`Bad row line ${i+1}: expected 8 columns`);
+      const [g,d] = p;
+      if(g!=="powerball" && g!=="ohio_lucky_for_life") throw new Error(`Bad game line ${i+1}: ${g}`);
+      if(!isISODate(d)) throw new Error(`Bad draw_date line ${i+1}: ${d}`);
+      if(p.slice(2).some(x=>!Number.isFinite(Number(x)))) throw new Error(`Non-numeric at line ${i+1}`);
+    }
+    return lines;
+  }
+
+  function loadDb(){
+    const saved = localStorage.getItem(KEY);
+    if(!saved) return null;
+    return parseCsv(saved);
+  }
+  function saveDb(lines){ localStorage.setItem(KEY, lines.join("\n")); }
+
+  function summarize(lines){
+    if(!lines){ $("summary").textContent=""; return; }
+    let pb=0,lfl=0;
+    for(let i=1;i<lines.length;i++){
+      const g = lines[i].split(",")[0].trim();
+      if(g==="powerball") pb++;
+      if(g==="ohio_lucky_for_life") lfl++;
+    }
+    $("summary").textContent = `Rows saved: ${lines.length-1} (powerball: ${pb}, ohio_lucky_for_life: ${lfl})`;
+  }
+
+  function refreshDbUI(){
+    const saved = localStorage.getItem(KEY);
+    if(saved){
+      setStatus($("savedStatus"), "Saved DB found on this device.");
+      $("downloadBtn").disabled = false;
+      $("clearBtn").disabled = false;
+      $("addBtn").disabled = false;
+      try { summarize(parseCsv(saved)); } catch { $("summary").textContent=""; }
+    } else {
+      setStatus($("savedStatus"), "No saved DB yet. Import CSV, or let auto-update create Powerball history.", false);
+      $("downloadBtn").disabled = true;
+      $("clearBtn").disabled = true;
+      $("addBtn").disabled = true;
+      $("summary").textContent="";
+    }
+  }
+
+  // tabs
+  function show(which){
+    $("viewDb").style.display   = which==="db"   ? "block" : "none";
+    $("viewGen").style.display  = which==="gen"  ? "block" : "none";
+    $("viewPred").style.display = which==="pred" ? "block" : "none";
+    $("viewBeta").style.display = which==="beta" ? "block" : "none";
+
+    ["tDb","tGen","tPred","tBeta"].forEach(id => $(id).classList.remove("active"));
+    $(which==="db"?"tDb":which==="gen"?"tGen":which==="pred"?"tPred":"tBeta").classList.add("active");
+
+    if(which==="pred") scheduleHC();
+    if(which==="beta") scheduleBetaRefresh();
+  }
+  $("tDb").onclick  = ()=>show("db");
+  $("tGen").onclick = ()=>show("gen");
+  $("tPred").onclick= ()=>show("pred");
+  $("tBeta").onclick= ()=>show("beta");
+
+  // dropdown helpers
+  function fillSelect(sel,min,max,def){
+    sel.innerHTML="";
+    for(let v=min; v<=max; v++){
+      const o=document.createElement("option");
+      o.value=String(v); o.textContent=String(v);
+      sel.appendChild(o);
+    }
+    sel.value=String(def);
+  }
+  function refreshAddDropdowns(){
+    const g = $("addGame").value;
+    const r = RULES[g];
+    $("bonusLbl").textContent = "bonus ("+r.bonusLabel+")";
+    fillSelect($("a1"), r.mainMin, r.mainMax, r.mainMin);
+    fillSelect($("a2"), r.mainMin, r.mainMax, r.mainMin+1);
+    fillSelect($("a3"), r.mainMin, r.mainMax, r.mainMin+2);
+    fillSelect($("a4"), r.mainMin, r.mainMax, r.mainMin+3);
+    fillSelect($("a5"), r.mainMin, r.mainMax, r.mainMin+4);
+    fillSelect($("ab"), r.bonusMin, r.bonusMax, r.bonusMin);
+  }
+  $("addGame").onchange = refreshAddDropdowns;
+  refreshAddDropdowns();
+
+  // import file
+  $("fileInput").addEventListener("change", async (e) => {
+    const f = e.target.files?.[0];
+    if(!f) return;
+    const text = await f.text();
+    try {
+      const lines = parseCsv(text);
+      saveDb(lines);
+      refreshDbUI();
+      setStatus($("loadStatus"), "CSV imported and saved.");
+    } catch(err){
+      setStatus($("loadStatus"), err.message || "Import failed", false);
+    }
+  });
+
+  $("usePastedBtn").onclick = () => {
+    try {
+      const lines = parseCsv($("csvText").value);
+      saveDb(lines);
+      refreshDbUI();
+      setStatus($("loadStatus"), "Pasted CSV imported and saved.");
+    } catch(err){
+      setStatus($("loadStatus"), err.message || "Import failed", false);
+    }
+  };
+
+  // add draw
+  function hasDup(lines, game, date){
+    for(let i=1;i<lines.length;i++){
+      const [g,d]=lines[i].split(",").map(x=>x.trim());
+      if(g===game && d===date) return true;
+    }
+    return false;
+  }
+  $("addBtn").onclick = () => {
+    let lines;
+    try { lines = loadDb(); } catch { lines = null; }
+    if(!lines){ setStatus($("addStatus"), "Import CSV first (or let auto-update create Powerball history).", false); return; }
+
+    const game = $("addGame").value;
+    const date = $("addDate").value;
+    if(!isISODate(date)){ setStatus($("addStatus"), "Pick a draw date.", false); return; }
+
+    const r = RULES[game];
+    const mains = [+$("a1").value,+$("a2").value,+$("a3").value,+$("a4").value,+$("a5").value];
+    const bonus = +$("ab").value;
+
+    if(new Set(mains).size !== 5){ setStatus($("addStatus"), "n1..n5 must be unique.", false); return; }
+    const inRange=(x,min,max)=>Number.isFinite(x)&&x>=min&&x<=max;
+    if(!mains.every(x=>inRange(x,r.mainMin,r.mainMax))){ setStatus($("addStatus"), `Main numbers must be ${r.mainMin}-${r.mainMax}.`, false); return; }
+    if(!inRange(bonus,r.bonusMin,r.bonusMax)){ setStatus($("addStatus"), `Bonus must be ${r.bonusMin}-${r.bonusMax}.`, false); return; }
+    if(hasDup(lines,game,date)){ setStatus($("addStatus"), "That game + draw_date already exists.", false); return; }
+
+    lines.push(`${game},${date},${mains[0]},${mains[1]},${mains[2]},${mains[3]},${mains[4]},${bonus}`);
+    saveDb(lines);
+    refreshDbUI();
+    setStatus($("addStatus"), "Added and saved (last line = last drawn).");
+  };
+
+  // download / clear
+  $("downloadBtn").onclick = () => {
+    const saved = localStorage.getItem(KEY);
+    if(!saved) return;
+    const blob = new Blob([saved],{type:"text/csv;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href=url; a.download="draws_saved_backup.csv";
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  };
+  $("clearBtn").onclick = () => {
+    if(!confirm("Delete saved database from this device?")) return;
+    localStorage.removeItem(KEY);
+    refreshDbUI();
+    $("genOut").innerHTML=""; $("predOut").innerHTML=""; $("betaOut").innerHTML="";
+    ["hotMain","hotBonus","coldMain","coldBonus"].forEach(id=>$(id).innerHTML="");
+    ["betaOverMain","betaOverBonus","betaRareMain","betaRareBonus"].forEach(id=>$(id).innerHTML="");
+    setStatus($("predStatus"), "");
+    setStatus($("genStatus"), "");
+    setStatus($("addStatus"), "");
+    setStatus($("betaStatus"), "");
+    $("betaMeta").textContent = "";
+    $("betaCopyBtn").disabled = true;
+  };
+
+  // rows for game
+  function rowsForGame(lines, game){
+    const rows=[];
+    for(let i=1;i<lines.length;i++){
+      const [g,draw_date,n1,n2,n3,n4,n5,bonus]=lines[i].split(",").map(x=>x.trim());
+      if(g!==game) continue;
+      rows.push({draw_date,n1:+n1,n2:+n2,n3:+n3,n4:+n4,n5:+n5,bonus:+bonus});
+    }
+    return rows;
+  }
+
+  // =========================
+  // AUTO-UPDATE POWERBALL (NY rows.json download)
+  // =========================
+  function parseWinningNumbersString(s){
+    const parts = String(s||"").trim().split(/\s+/).filter(Boolean);
+    if(parts.length !== 6) return null;
+    const nums = parts.map(x => Number(x));
+    if(nums.some(n => !Number.isFinite(n))) return null;
+    return { mains: nums.slice(0,5), bonus: nums[5] };
+  }
+
+  function parseNYRowsJsonToPowerballDraws(json){
+    // NY rows.json has shape: {data: [...]}, where each row is an array.
+    // We search each row for a date-like value and a "winning numbers" string.
+    const out = [];
+    const data = json && json.data;
+    if(!Array.isArray(data)) return out;
+
+    for(const row of data){
+      if(!Array.isArray(row)) continue;
+
+      // Find date and winning numbers anywhere in the row
+      let dateISO = null;
+      let winStr = null;
+
+      for(const cell of row){
+        if(typeof cell === "string"){
+          // date usually like "2025-01-01T00:00:00.000"
+          if(!dateISO && /^\d{4}-\d{2}-\d{2}T/.test(cell)){
+            const d = cell.slice(0,10);
+            if(isISODate(d)) dateISO = d;
+          }
+          // winning numbers like "11 21 27 36 62 24"
+          if(!winStr && /^\d{1,2}\s+\d{1,2}\s+\d{1,2}\s+\d{1,2}\s+\d{1,2}\s+\d{1,2}$/.test(cell.trim())){
+            winStr = cell.trim();
+          }
+        }
+      }
+
+      if(!dateISO || !winStr) continue;
+
+      const parsed = parseWinningNumbersString(winStr);
+      if(!parsed) continue;
+
+      const mains = parsed.mains.slice().map(n=>Math.trunc(n)).sort((a,b)=>a-b);
+      const bonus = Math.trunc(parsed.bonus);
+
+      if(new Set(mains).size !== 5) continue;
+      if(mains.some(n=>n<1||n>69)) continue;
+      if(!(bonus>=1&&bonus<=26)) continue;
+
+      out.push({dateISO, mains, bonus});
+    }
+
+    out.sort((a,b)=>a.dateISO.localeCompare(b.dateISO));
+    return out;
+  }
+
+  async function updatePowerballNY({quiet=false} = {}){
+    const start = Date.now();
+    if(!quiet) setStatus($("autoStatus"), "Updating Powerball from NY Open Data…");
+
+    let lines = null;
+    try { lines = loadDb(); } catch { lines = null; }
+    if(!lines) lines = [REQUIRED];
+
+    try{
+      const resp = await fetch(NY_ROWS_JSON, {method:"GET", cache:"no-store"});
+      if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const json = await resp.json();
+
+      const draws = parseNYRowsJsonToPowerballDraws(json);
+
+      const existing = new Set();
+      for(let i=1;i<lines.length;i++){
+        const p = lines[i].split(",").map(x=>x.trim());
+        existing.add(`${p[0]}|${p[1]}`);
+      }
+
+      let added = 0;
+      for(const d of draws){
+        const k = `powerball|${d.dateISO}`;
+        if(existing.has(k)) continue;
+        lines.push(`powerball,${d.dateISO},${d.mains[0]},${d.mains[1]},${d.mains[2]},${d.mains[3]},${d.mains[4]},${d.bonus}`);
+        existing.add(k);
+        added++;
+      }
+
+      saveDb(lines);
+      refreshDbUI();
+
+      const ms = Date.now() - start;
+      if(added>0) setStatus($("autoStatus"), `Auto-update complete: added ${added} Powerball draw(s) in ${ms} ms.`);
+      else setStatus($("autoStatus"), `Auto-update complete: no new Powerball draws found. (${ms} ms)`);
+      return true;
+
+    } catch(err){
+      setStatus($("autoStatus"), `Auto-update failed: ${err?.message || "Unknown error"}`, false);
+      return false;
+    }
+  }
+
+  $("updatePbBtn").onclick = () => updatePowerballNY({quiet:false});
+
+  // ---------- Random generator ----------
+  function pickUnique(min,max,count){
+    const s=new Set();
+    while(s.size<count) s.add(Math.floor(Math.random()*(max-min+1))+min);
+    return Array.from(s).sort((a,b)=>a-b);
+  }
+  function key(d){ return `${d.n1}-${d.n2}-${d.n3}-${d.n4}-${d.n5}|${d.bonus}`; }
+
+  $("genBtn").onclick = () => {
+    $("genOut").innerHTML=""; setStatus($("genStatus"), "");
+    const game = $("genGame").value;
+    const r = RULES[game];
+    const count = Math.max(1, Math.min(50, Number($("genCount").value)||1));
+    const avoidLastN = Math.max(0, Number($("avoidLastN").value)||0);
+
+    let avoid=new Set();
+    let lines=null;
+    try { lines = loadDb(); } catch { lines=null; }
+    if(avoidLastN>0 && lines){
+      const rows = rowsForGame(lines, game).slice(-avoidLastN);
+      rows.forEach(x=>avoid.add(key(x)));
+    }
+
+    let tries=0, maxTries=6000;
+    for(let i=0;i<count;i++){
+      let made=null;
+      while(tries<maxTries){
+        tries++;
+        const mains=pickUnique(r.mainMin,r.mainMax,5);
+        const bonus=Math.floor(Math.random()*(r.bonusMax-r.bonusMin+1))+r.bonusMin;
+        const cand={n1:mains[0],n2:mains[1],n3:mains[2],n4:mains[3],n5:mains[4],bonus};
+        if(avoid.size && avoid.has(key(cand))) continue;
+        made=cand; break;
+      }
+      if(!made){ setStatus($("genStatus"), "Could not generate. Set avoidLastN to 0.", false); break; }
+      const box=document.createElement("div");
+      box.className="numbers";
+      box.textContent=`${made.n1}  ${made.n2}  ${made.n3}  ${made.n4}  ${made.n5}   +${made.bonus}`;
+      $("genOut").appendChild(box);
+    }
+    setStatus($("genStatus"), `Generated ${count} set(s).` + (avoid.size?` Avoided last ${avoidLastN}.`:""));
+  };
+
+  // ---------- Predict hot/cold ----------
+  function weightedPick(weights){
+    let total=0; for(const w of weights) total += (w||0);
+    if(total<=0) return null;
+    let r=Math.random()*total;
+    for(let i=0;i<weights.length;i++){
+      const w=weights[i]||0; if(w<=0) continue;
+      r-=w; if(r<=0) return i;
+    }
+    return null;
+  }
+
+  function buildWC(rows, rules, mode, strength){
+    const mainW=Array(rules.mainMax+1).fill(1), bonusW=Array(rules.bonusMax+1).fill(1);
+    const mainC=Array(rules.mainMax+1).fill(0), bonusC=Array(rules.bonusMax+1).fill(0);
+    const n=rows.length;
+    for(let idx=0; idx<n; idx++){
+      const row=rows[idx];
+
+      [row.n1,row.n2,row.n3,row.n4,row.n5].forEach(v=>{ if(v>=rules.mainMin&&v<=rules.mainMax) mainC[v]++; });
+      if(row.bonus>=rules.bonusMin&&row.bonus<=rules.bonusMax) bonusC[row.bonus]++;
+
+      let w=1;
+      if(mode==="recent"){
+        const t = n<=1 ? 1 : (idx/(n-1));
+        w = 1 + (t*strength);
+      }
+      [row.n1,row.n2,row.n3,row.n4,row.n5].forEach(v=>{ if(v>=rules.mainMin&&v<=rules.mainMax) mainW[v]+=w; });
+      if(row.bonus>=rules.bonusMin&&row.bonus<=rules.bonusMax) bonusW[row.bonus]+=w;
+    }
+    return {mainW,bonusW,mainC,bonusC};
+  }
+
+  function listK(w,c,min,max,k,asc=false){
+    const arr=[];
+    for(let i=min;i<=max;i++) arr.push({n:i,w:w[i]||0,c:c[i]||0});
+    arr.sort((a,b)=> asc ? ((a.w-b.w)||(a.c-b.c)||(a.n-b.n)) : ((b.w-a.w)||(b.c-a.c)||(a.n-b.n)));
+    return arr.slice(0,k);
+  }
+
+  function renderChip(x, mode){
+    const d=document.createElement("div"); d.className="chip";
+    if(mode==="c") d.innerHTML=`${x.n} <span>c=${x.c}</span>`;
+    else if(mode==="w") d.innerHTML=`${x.n} <span>w=${x.w.toFixed(1)}</span>`;
+    else d.innerHTML=`${x.n} <span>c=${x.c}</span> <span class="sep">•</span> <span>w=${x.w.toFixed(1)}</span>`;
+    return d;
+  }
+
+  function renderHC(){
+    ["hotMain","hotBonus","coldMain","coldBonus"].forEach(id=>$(id).innerHTML="");
+
+    let lines;
+    try { lines = loadDb(); } catch { lines = null; }
+    if(!lines){ setStatus($("predStatus"), "No saved DB found. Import your CSV first.", false); return false; }
+
+    const game=$("predGame").value;
+    const rules=RULES[game];
+    let rows=rowsForGame(lines,game);
+
+    const lastN = Math.max(0, Number($("predLastN").value)||0);
+    if(lastN>0) rows = rows.slice(-lastN);
+
+    if(!rows.length){ setStatus($("predStatus"), "Your saved DB has no rows for this game.", false); return false; }
+
+    const mode=$("predMode").value;
+    const strength=Math.max(0, Number($("recentStrength").value)||0);
+    const disp=$("displayMode").value;
+
+    const {mainW,bonusW,mainC,bonusC} = buildWC(rows, rules, mode, strength);
+
+    const hotM=listK(mainW,mainC,rules.mainMin,rules.mainMax,10,false);
+    const hotB=listK(bonusW,bonusC,rules.bonusMin,rules.bonusMax,5,false);
+    const coldM=listK(mainW,mainC,rules.mainMin,rules.mainMax,10,true);
+    const coldB=listK(bonusW,bonusC,rules.bonusMin,rules.bonusMax,5,true);
+
+    hotM.forEach(x=>$("hotMain").appendChild(renderChip(x,disp)));
+    hotB.forEach(x=>$("hotBonus").appendChild(renderChip(x,disp)));
+    coldM.forEach(x=>$("coldMain").appendChild(renderChip(x,disp)));
+    coldB.forEach(x=>$("coldBonus").appendChild(renderChip(x,disp)));
+
+    setStatus($("predStatus"), `Hot & cold updated (${mode}${mode==="recent" ? ", strength "+strength : ""}).`);
+    return true;
+  }
+
+  function weightedUniqueMains(weights, rules){
+    const picked=new Set();
+    const w=weights.slice();
+    while(picked.size<5){
+      const v=weightedPick(w);
+      if(v===null) break;
+      if(v<rules.mainMin||v>rules.mainMax){ w[v]=0; continue; }
+      if(!picked.has(v)){ picked.add(v); w[v]=0; }
+    }
+    return Array.from(picked).sort((a,b)=>a-b);
+  }
+
+  $("refreshHC").onclick = renderHC;
+
+  $("predBtn").onclick = () => {
+    $("predOut").innerHTML="";
+    if(!renderHC()) return;
+
+    const lines = loadDb();
+    const game=$("predGame").value;
+    const rules=RULES[game];
+    let rows=rowsForGame(lines,game);
+
+    const lastN = Math.max(0, Number($("predLastN").value)||0);
+    if(lastN>0) rows = rows.slice(-lastN);
+
+    const mode=$("predMode").value;
+    const strength=Math.max(0, Number($("recentStrength").value)||0);
+    const {mainW,bonusW} = buildWC(rows, rules, mode, strength);
+
+    const count = Math.max(1, Math.min(50, Number($("predCount").value)||1));
+    for(let i=0;i<count;i++){
+      const mains = weightedUniqueMains(mainW, rules);
+      const bonus = weightedPick(bonusW);
+      if(mains.length!==5 || bonus===null) break;
+      const box=document.createElement("div");
+      box.className="numbers";
+      box.textContent=`${mains[0]}  ${mains[1]}  ${mains[2]}  ${mains[3]}  ${mains[4]}   +${bonus}`;
+      $("predOut").appendChild(box);
+    }
+  };
+
+  let predTimer=null;
+  function scheduleHC(){
+    if(predTimer) clearTimeout(predTimer);
+    predTimer=setTimeout(()=>{ try{renderHC();}catch{} }, 120);
+  }
+  ["predGame","predMode","recentStrength","predLastN","displayMode"].forEach(id=>{
+    $(id).addEventListener("input", scheduleHC);
+    $(id).addEventListener("change", scheduleHC);
+  });
+
+  // ---------- BETA ----------
+  let lastBetaLineText = "";
+
+  function topOverdue(listOver, min, max, k){
+    const arr=[];
+    for(let v=min; v<=max; v++) arr.push({n:v, over:listOver[v]||0});
+    arr.sort((a,b)=> (b.over-a.over) || (a.n-b.n));
+    return arr.slice(0,k);
+  }
+  function topRarest(counts, min, max, k){
+    const arr=[];
+    for(let v=min; v<=max; v++) arr.push({n:v, c:counts[v]||0});
+    arr.sort((a,b)=> (a.c-b.c) || (a.n-b.n));
+    return arr.slice(0,k);
+  }
+  function renderSimpleChip(text){
+    const d=document.createElement("div");
+    d.className="chip";
+    d.innerHTML = text;
+    return d;
+  }
+
+  function computeOverdueRareStatsPowerball(rows, lastN){
+    const useRows = (lastN && lastN > 0) ? rows.slice(-lastN) : rows;
+    const n = useRows.length;
+
+    const mainCount = Array(70).fill(0);
+    const bonusCount = Array(27).fill(0);
+    const mainLastIdx = Array(70).fill(-1);
+    const bonusLastIdx = Array(27).fill(-1);
+
+    for(let i=0;i<n;i++){
+      const r = useRows[i];
+      const mains=[r.n1,r.n2,r.n3,r.n4,r.n5];
+      for(const v of mains){
+        if(v>=1 && v<=69){ mainCount[v]++; mainLastIdx[v]=i; }
+      }
+      if(r.bonus>=1 && r.bonus<=26){ bonusCount[r.bonus]++; bonusLastIdx[r.bonus]=i; }
+    }
+
+    const mainOver = Array(70).fill(0);
+    const bonusOver= Array(27).fill(0);
+    for(let v=1; v<=69; v++){
+      const last = mainLastIdx[v];
+      mainOver[v] = (last === -1) ? n : (n-1 - last);
+    }
+    for(let v=1; v<=26; v++){
+      const last = bonusLastIdx[v];
+      bonusOver[v] = (last === -1) ? n : (n-1 - last);
+    }
+    return { nUsed:n, mainCount, bonusCount, mainOver, bonusOver };
+  }
+
+  function computeNormalizedArrays(stats){
+    let maxMainOver=0, maxBonusOver=0, maxMainCount=0, maxBonusCount=0;
+    for(let v=1; v<=69; v++){
+      if(stats.mainOver[v] > maxMainOver) maxMainOver = stats.mainOver[v];
+      if(stats.mainCount[v] > maxMainCount) maxMainCount = stats.mainCount[v];
+    }
+    for(let v=1; v<=26; v++){
+      if(stats.bonusOver[v] > maxBonusOver) maxBonusOver = stats.bonusOver[v];
+      if(stats.bonusCount[v] > maxBonusCount) maxBonusCount = stats.bonusCount[v];
+    }
+
+    const mainOverN = Array(70).fill(0);
+    const bonusOverN= Array(27).fill(0);
+    const mainRareN = Array(70).fill(0);
+    const bonusRareN= Array(27).fill(0);
+
+    for(let v=1; v<=69; v++){
+      mainOverN[v] = maxMainOver ? (stats.mainOver[v]/maxMainOver) : 0;
+      mainRareN[v] = maxMainCount ? (1 - (stats.mainCount[v]/maxMainCount)) : 1;
+    }
+    for(let v=1; v<=26; v++){
+      bonusOverN[v] = maxBonusOver ? (stats.bonusOver[v]/maxBonusOver) : 0;
+      bonusRareN[v] = maxBonusCount ? (1 - (stats.bonusCount[v]/maxBonusCount)) : 1;
+    }
+    return { mainOverN, bonusOverN, mainRareN, bonusRareN };
+  }
+
+  function weightedPickFromScores(scores, min, max, randomness){
+    const eps = 1e-9;
+    let bestV = min, bestS = -1;
+    for(let v=min; v<=max; v++){
+      if(scores[v] > bestS){ bestS = scores[v]; bestV = v; }
+    }
+    if(randomness <= 0) return bestV;
+
+    // With randomness: choose between “best” and weighted sample
+    if(Math.random() > randomness) return bestV;
+
+    let total = 0;
+    const w = Array(max+1).fill(0);
+    for(let v=min; v<=max; v++){
+      const s = Math.max(0, scores[v]);
+      const ww = Math.pow(s + eps, 2);
+      w[v] = ww;
+      total += ww;
+    }
+    if(total <= 0) return bestV;
+
+    let r=Math.random()*total;
+    for(let v=min; v<=max; v++){
+      r -= w[v];
+      if(r <= 0) return v;
+    }
+    return bestV;
+  }
+
+  function refreshBetaLists(){
+    ["betaOverMain","betaOverBonus","betaRareMain","betaRareBonus"].forEach(id=>$(id).innerHTML="");
+    setStatus($("betaStatus"), "");
+    $("betaMeta").textContent = "";
+
+    let lines;
+    try { lines = loadDb(); } catch { lines = null; }
+    if(!lines){ setStatus($("betaStatus"), "No saved DB found. Import your CSV first.", false); return false; }
+
+    const pbRowsAll = rowsForGame(lines, "powerball");
+    if(!pbRowsAll.length){ setStatus($("betaStatus"), "No Powerball rows found in your saved DB.", false); return false; }
+
+    const lastN = Math.max(0, Number($("betaLastN").value)||0);
+    const stats = computeOverdueRareStatsPowerball(pbRowsAll, lastN);
+
+    const overMain = topOverdue(stats.mainOver, 1, 69, 10);
+    const overBonus= topOverdue(stats.bonusOver, 1, 26, 5);
+    const rareMain = topRarest(stats.mainCount, 1, 69, 10);
+    const rareBonus= topRarest(stats.bonusCount, 1, 26, 5);
+
+    overMain.forEach(x => $("betaOverMain").appendChild(renderSimpleChip(`${x.n} <span>over=${x.over}</span>`)));
+    overBonus.forEach(x => $("betaOverBonus").appendChild(renderSimpleChip(`${x.n} <span>over=${x.over}</span>`)));
+    rareMain.forEach(x => $("betaRareMain").appendChild(renderSimpleChip(`${x.n} <span>count=${x.c}</span>`)));
+    rareBonus.forEach(x => $("betaRareBonus").appendChild(renderSimpleChip(`${x.n} <span>count=${x.c}</span>`)));
+
+    const basis = (lastN && lastN>0) ? `last ${stats.nUsed} Powerball draw(s)` : `all ${stats.nUsed} Powerball draw(s)`;
+    $("betaMeta").textContent = `Basis: ${basis}. (over = draws since last seen; count = total times drawn)`;
+    setStatus($("betaStatus"), "Lists updated.");
+    return true;
+  }
+
+  function generateBetaLine(){
+    $("betaOut").innerHTML="";
+    setStatus($("betaStatus"), "");
+    $("betaCopyBtn").disabled = true;
+    lastBetaLineText = "";
+
+    let lines;
+    try { lines = loadDb(); } catch { lines = null; }
+    if(!lines){ setStatus($("betaStatus"), "No saved DB found. Import your CSV first.", false); return; }
+
+    const pbRowsAll = rowsForGame(lines, "powerball");
+    if(!pbRowsAll.length){ setStatus($("betaStatus"), "No Powerball rows found in your saved DB.", false); return; }
+
+    const lastN = Math.max(0, Number($("betaLastN").value)||0);
+    const rand = Math.max(0, Math.min(1, Number($("betaRand").value)||0));
+    const wOver = Math.max(0, Number($("betaWOver").value)||0);
+    const wRare = Math.max(0, Number($("betaWRare").value)||0);
+
+    if(wOver===0 && wRare===0){
+      setStatus($("betaStatus"), "Set at least one weight above 0 (Overdue or Rare).", false);
+      return;
+    }
+
+    const stats = computeOverdueRareStatsPowerball(pbRowsAll, lastN);
+    const norm = computeNormalizedArrays(stats);
+
+    const mainScores = Array(70).fill(0);
+    const bonusScores= Array(27).fill(0);
+    for(let v=1; v<=69; v++){
+      mainScores[v] = (wOver * norm.mainOverN[v]) + (wRare * norm.mainRareN[v]);
+    }
+    for(let v=1; v<=26; v++){
+      bonusScores[v] = (wOver * norm.bonusOverN[v]) + (wRare * norm.bonusRareN[v]);
+    }
+
+    const picked = new Set();
+    let guard = 0;
+    while(picked.size < 5 && guard < 800){
+      guard++;
+      const v = weightedPickFromScores(mainScores, 1, 69, rand);
+      if(!picked.has(v)) picked.add(v);
+      mainScores[v] = -1; // prevent repeat
+    }
+
+    const mains = Array.from(picked).sort((a,b)=>a-b);
+    const bonus = weightedPickFromScores(bonusScores, 1, 26, rand);
+
+    const line = `${mains[0]} ${mains[1]} ${mains[2]} ${mains[3]} ${mains[4]} +${bonus}`;
+    lastBetaLineText = line;
+
+    const box = document.createElement("div");
+    box.className = "numbers";
+    box.textContent = line;
+    $("betaOut").appendChild(box);
+
+    const basis = (lastN && lastN>0) ? `last ${stats.nUsed} Powerball draw(s)` : `all ${stats.nUsed} Powerball draw(s)`;
+    $("betaMeta").textContent = `Basis: ${basis}. Weights: overdue=${wOver}, rare=${wRare}. Randomness=${rand}.`;
+
+    $("betaCopyBtn").disabled = false;
+    setStatus($("betaStatus"), "Generated 1 line using Overdue + Rare scoring.");
+  }
+
+  async function copyBetaLine(){
+    if(!lastBetaLineText) return;
+    try{
+      await navigator.clipboard.writeText(lastBetaLineText);
+      setStatus($("betaStatus"), "Copied to clipboard.");
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = lastBetaLineText;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      ta.remove();
+      setStatus($("betaStatus"), "Copied to clipboard.");
+    }
+  }
+
+  $("betaRefreshBtn").onclick = refreshBetaLists;
+  $("betaBtn").onclick = () => { refreshBetaLists(); generateBetaLine(); };
+  $("betaCopyBtn").onclick = copyBetaLine;
+
+  let betaTimer=null;
+  function scheduleBetaRefresh(){
+    if(betaTimer) clearTimeout(betaTimer);
+    betaTimer = setTimeout(()=>{ try{refreshBetaLists();}catch{} }, 120);
+  }
+  ["betaLastN","betaRand","betaWOver","betaWRare"].forEach(id=>{
+    $(id).addEventListener("input", scheduleBetaRefresh);
+    $(id).addEventListener("change", scheduleBetaRefresh);
+  });
+
+  // start
+  refreshDbUI();
+  setStatus($("loadStatus"), "Ready.");
+
+  // Auto-update on launch (Powerball)
+  updatePowerballNY({quiet:true});
+})();
+</script>
+</body>
+</html>
