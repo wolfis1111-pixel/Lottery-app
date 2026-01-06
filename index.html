@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Lottery App v15</title>
+<title>Lottery App v16</title>
 <style>
   body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:16px;background:#fafafa}
   .top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
@@ -54,7 +54,7 @@
 
 <div class="top">
   <div>
-    <h1>Lottery App <span class="pill">v15</span></h1>
+    <h1>Lottery App <span class="pill">v16</span></h1>
     <div class="small">
       Required CSV columns:<br>
       <code>game,draw_date,n1,n2,n3,n4,n5,bonus</code><br>
@@ -291,7 +291,7 @@
   const REQUIRED = "game,draw_date,n1,n2,n3,n4,n5,bonus";
   const KEY = "LOTTERY_DRAW_DB_CSV_V1";
 
-  // Socrata (NY Open Data) Powerball dataset (identifier: d6yy-54nr)
+  // Socrata (NY Open Data) Powerball dataset
   const SOCRATA_BASE = "https://data.ny.gov/resource/d6yy-54nr.json";
 
   const RULES = {
@@ -356,7 +356,7 @@
       $("addBtn").disabled = false;
       try { summarize(parseCsv(saved)); } catch { $("summary").textContent=""; }
     } else {
-      setStatus($("savedStatus"), "No saved DB yet. Import your CSV below, or let auto-update create Powerball history.", false);
+      setStatus($("savedStatus"), "No saved DB yet. Import CSV, or let auto-update create Powerball history.", false);
       $("downloadBtn").disabled = true;
       $("clearBtn").disabled = true;
       $("addBtn").disabled = true;
@@ -503,40 +503,12 @@
   }
 
   // =========================
-  // AUTO-UPDATE POWERBALL (Socrata)
+  // AUTO-UPDATE POWERBALL (Socrata) — FIXED (no SoQL)
   // =========================
-  function escapeSoqlString(s){
-    // SoQL strings use single quotes; escape by doubling them
-    return String(s).replace(/'/g, "''");
-  }
-
-  function latestPowerballDateInDb(lines){
-    if(!lines) return null;
-    let latest = null;
-    for(let i=1;i<lines.length;i++){
-      const p = lines[i].split(",").map(x=>x.trim());
-      if(p[0] !== "powerball") continue;
-      const d = p[1];
-      if(isISODate(d) && (!latest || d > latest)) latest = d;
-    }
-    return latest;
-  }
-
-  function socrataUrlForNewPowerball(afterDateISO){
-    // Socrata /resource endpoint supports SoQL parameters
-    // We request draw_date + winning_numbers, ordered ASC so we can append as "last drawn"
+  function socrataUrlForPowerballAll(){
     const params = new URLSearchParams();
-    params.set("$select", "draw_date,winning_numbers");
-    params.set("$order", "draw_date ASC");
-    params.set("$limit", "200");
-
-    if(afterDateISO){
-      // draw_date in dataset is a timestamp; use ISO with T00:00:00.000
-      const where = `draw_date > '${escapeSoqlString(afterDateISO)}T00:00:00.000'`;
-      params.set("$where", where);
-    }
-    // cache buster
-    params.set("_ts", String(Date.now()));
+    params.set("$limit", "50000");     // grab everything (dataset is much smaller)
+    params.set("_ts", String(Date.now())); // cache buster
     return `${SOCRATA_BASE}?${params.toString()}`;
   }
 
@@ -556,19 +528,17 @@
     let lines = null;
     try { lines = loadDb(); } catch { lines = null; }
 
-    // If no DB yet, create it (Powerball rows only) and user can import LFL later
+    // If no DB yet, create it (Powerball rows only)
     if(!lines){
       lines = [REQUIRED];
     }
 
-    const latestISO = latestPowerballDateInDb(lines);
-    const url = socrataUrlForNewPowerball(latestISO);
+    const url = socrataUrlForPowerballAll();
 
     try{
       const resp = await fetch(url, {method:"GET"});
       if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
-
       if(!Array.isArray(data)) throw new Error("Unexpected JSON (not an array).");
 
       // Build a set of existing keys for de-dupe
@@ -578,29 +548,36 @@
         existing.add(`${p[0]}|${p[1]}`);
       }
 
-      let added = 0;
+      // Convert all rows -> normalized rows, then sort by date so "last line = last drawn"
+      const converted = [];
       for(const row of data){
         const drawTs = row?.draw_date;
         const win = row?.winning_numbers;
         if(!drawTs || !win) continue;
 
-        const dateISO = String(drawTs).slice(0,10); // "YYYY-MM-DD"
+        const dateISO = String(drawTs).slice(0,10);
         if(!isISODate(dateISO)) continue;
 
         const parsed = parseWinningNumbersString(win);
         if(!parsed) continue;
 
-        // Validate ranges
         const mains = parsed.mains.slice().map(n=>Math.trunc(n)).sort((a,b)=>a-b);
         if(new Set(mains).size !== 5) continue;
         if(mains.some(n=>n<1 || n>69)) continue;
+
         const bonus = Math.trunc(parsed.bonus);
         if(!(bonus>=1 && bonus<=26)) continue;
 
-        const k = `powerball|${dateISO}`;
-        if(existing.has(k)) continue;
+        converted.push({dateISO, mains, bonus});
+      }
 
-        lines.push(`powerball,${dateISO},${mains[0]},${mains[1]},${mains[2]},${mains[3]},${mains[4]},${bonus}`);
+      converted.sort((a,b)=>a.dateISO.localeCompare(b.dateISO));
+
+      let added = 0;
+      for(const c of converted){
+        const k = `powerball|${c.dateISO}`;
+        if(existing.has(k)) continue;
+        lines.push(`powerball,${c.dateISO},${c.mains[0]},${c.mains[1]},${c.mains[2]},${c.mains[3]},${c.mains[4]},${c.bonus}`);
         existing.add(k);
         added++;
       }
@@ -617,8 +594,7 @@
       return true;
     } catch(err){
       const msg = (err && err.message) ? err.message : "Update failed.";
-      // This is where you'd see CORS/network issues too
-      setStatus($("autoStatus"), `Auto-update failed: ${msg}. If this says “CORS” or “Failed to fetch”, the browser blocked cross-site access.`, false);
+      setStatus($("autoStatus"), `Auto-update failed: ${msg}. If you see “Failed to fetch”, the browser blocked it (CORS/network).`, false);
       return false;
     }
   }
@@ -804,7 +780,7 @@
     $(id).addEventListener("change", scheduleHC);
   });
 
-  // ---------- BETA (unchanged from v14) ----------
+  // ---------- BETA ----------
   let lastBetaLineText = "";
 
   function computeOverdueRareStatsPowerball(rows, lastN){
@@ -900,10 +876,6 @@
     return true;
   }
 
-  function buildScore(over, rareN, overN, wOver, wRare){
-    return (wOver * (overN||0)) + (wRare * (rareN||0));
-  }
-
   function weightedPickFromScores(scores, min, max, randomness){
     const eps = 1e-9;
     let bestV = min, bestS = -1;
@@ -988,10 +960,10 @@
     const mainScores = Array(70).fill(0);
     const bonusScores= Array(27).fill(0);
     for(let v=1; v<=69; v++){
-      mainScores[v] = buildScore(stats.mainOver[v], norm.mainRareN[v], norm.mainOverN[v], wOver, wRare);
+      mainScores[v] = (wOver * norm.mainOverN[v]) + (wRare * norm.mainRareN[v]);
     }
     for(let v=1; v<=26; v++){
-      bonusScores[v] = buildScore(stats.bonusOver[v], norm.bonusRareN[v], norm.bonusOverN[v], wOver, wRare);
+      bonusScores[v] = (wOver * norm.bonusOverN[v]) + (wRare * norm.bonusRareN[v]);
     }
 
     const picked = new Set();
@@ -1059,8 +1031,7 @@
   refreshDbUI();
   setStatus($("loadStatus"), "Ready.");
 
-  // AUTO-UPDATE ON LAUNCH (Option A)
-  // Runs once on page load; it will create DB if missing and then append new Powerball draws.
+  // AUTO-UPDATE ON LAUNCH
   updatePowerballFromSocrata({quiet:true});
 })();
 </script>
