@@ -1,72 +1,103 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lottery Number Generator</title>
-
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lottery Generator (CSV Import)</title>
 <style>
-body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #f2f2f2;
-  padding: 20px;
-}
-.container {
-  background: white;
-  max-width: 420px;
-  margin: auto;
-  padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,.1);
-}
-h2 {
-  text-align: center;
-}
-select, button {
-  width: 100%;
-  padding: 12px;
-  margin-top: 12px;
-  font-size: 16px;
-}
-button {
-  background: #007aff;
-  color: white;
-  border: none;
-  border-radius: 8px;
-}
-.result {
-  margin-top: 20px;
-  font-size: 18px;
-  text-align: center;
-}
-.odds {
-  margin-top: 10px;
-  font-size: 14px;
-  color: #666;
-  text-align: center;
-}
+  body { font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; background:#f2f2f2; padding:20px; }
+  .container { background:#fff; max-width:520px; margin:auto; padding:18px; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,.08); }
+  h2 { margin: 6px 0 14px; text-align:center; }
+  select, button, input[type="file"] { width:100%; padding:12px; margin-top:10px; font-size:16px; }
+  button { background:#007aff; color:#fff; border:none; border-radius:10px; }
+  .btn2 { background:#111; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; }
+  .row > * { flex:1; min-width: 160px; }
+  .card { background:#fafafa; border:1px solid #eee; border-radius:12px; padding:14px; margin-top:14px; }
+  .muted { color:#666; font-size:14px; }
+  .result { font-size:18px; text-align:center; margin-top:10px; }
+  .pill { display:inline-block; border:1px solid #ddd; border-radius:999px; padding:6px 10px; margin:6px 6px 0 0; background:white; }
+  ol { margin: 8px 0 0 18px; }
+  code { background:#eee; padding:2px 6px; border-radius:6px; }
 </style>
 </head>
-
 <body>
-
 <div class="container">
   <h2>Lottery Generator</h2>
 
-  <label>Game</label>
-  <select id="game">
-    <option value="powerball">Powerball</option>
-    <option value="lucky">Ohio Lucky for Life</option>
-  </select>
+  <div class="card">
+    <strong>Step 1: Import your CSV (900 draws)</strong>
+    <div class="muted" style="margin-top:6px;">
+      CSV columns must be: <code>game,draw_date,n1,n2,n3,n4,n5,bonus</code><br>
+      game values: <code>powerball</code> or <code>ohio_lucky_for_life</code>
+    </div>
 
-  <button onclick="generate()">Generate Numbers</button>
+    <input id="csvFile" type="file" accept=".csv,text/csv" />
+    <button class="btn2" onclick="importCSV()">Import CSV into this phone</button>
+    <button onclick="clearData()">Clear imported data</button>
 
-  <div class="result" id="output"></div>
-  <div class="odds" id="odds"></div>
-  <div class="odds">(For entertainment only)</div>
+    <div class="muted" id="importStatus" style="margin-top:10px;"></div>
+  </div>
+
+  <div class="card">
+    <strong>Step 2: Generate numbers</strong>
+
+    <label class="muted">Game</label>
+    <select id="game">
+      <option value="powerball">Powerball</option>
+      <option value="ohio_lucky_for_life">Ohio Lucky for Life</option>
+    </select>
+
+    <label class="muted">Method</label>
+    <select id="method">
+      <option value="random">Random</option>
+      <option value="hot">Hot (from CSV)</option>
+      <option value="cold">Cold (from CSV)</option>
+      <option value="weighted">Weighted (from CSV)</option>
+    </select>
+
+    <label class="muted">Lookback draws (uses most recent N in your imported data)</label>
+    <select id="lookback">
+      <option value="50">50</option>
+      <option value="100">100</option>
+      <option value="365">365</option>
+      <option value="900">900</option>
+    </select>
+
+    <button onclick="generate()">Generate Numbers</button>
+
+    <div class="result" id="output"></div>
+    <div class="muted" id="odds" style="text-align:center; margin-top:8px;"></div>
+    <div class="muted" style="text-align:center; margin-top:4px;">
+      For entertainment only. Generator does not change official odds.
+    </div>
+  </div>
+
+  <div class="card">
+    <strong>Hot numbers preview (from your imported data)</strong>
+    <div class="muted">Shows top 10 main numbers for the selected game + lookback.</div>
+    <div id="hotPreview" style="margin-top:10px;"></div>
+  </div>
+
 </div>
 
 <script>
+/** ---------- Storage ---------- **/
+const STORAGE_KEY = "lottery_draws_v1";
+
+function loadDraws() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function saveDraws(draws) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(draws));
+}
+
+/** ---------- Helpers ---------- **/
 function uniqueNumbers(count, min, max) {
   const nums = [];
   while (nums.length < count) {
@@ -76,26 +107,261 @@ function uniqueNumbers(count, min, max) {
   return nums.sort((a,b)=>a-b);
 }
 
+function parseCSV(text) {
+  // Simple CSV parser (handles commas, not quotes-with-commas).
+  const lines = text.replace(/\r/g, "").split("\n").filter(l => l.trim().length > 0);
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(",").map(h => h.trim().toLowerCase());
+
+  const idx = (name) => headers.indexOf(name);
+  const required = ["game","draw_date","n1","n2","n3","n4","n5","bonus"];
+  for (const r of required) {
+    if (idx(r) === -1) throw new Error("Missing column: " + r);
+  }
+
+  const out = [];
+  for (let i=1; i<lines.length; i++) {
+    const parts = lines[i].split(",").map(p => p.trim());
+    if (parts.length < headers.length) continue;
+
+    const game = parts[idx("game")].toLowerCase();
+    const draw_date = parts[idx("draw_date")];
+
+    const row = {
+      game,
+      draw_date,
+      main: [
+        Number(parts[idx("n1")]),
+        Number(parts[idx("n2")]),
+        Number(parts[idx("n3")]),
+        Number(parts[idx("n4")]),
+        Number(parts[idx("n5")])
+      ],
+      bonus: Number(parts[idx("bonus")])
+    };
+
+    // Basic validation
+    if (!["powerball","ohio_lucky_for_life"].includes(row.game)) continue;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(row.draw_date)) continue;
+    if (row.main.some(n => !Number.isFinite(n))) continue;
+    if (!Number.isFinite(row.bonus)) continue;
+
+    out.push(row);
+  }
+  return out;
+}
+
+function getGameRules(game) {
+  if (game === "powerball") {
+    return { mainMin:1, mainMax:69, bonusMin:1, bonusMax:26, odds:"Jackpot odds: 1 in 292,201,338" };
+  }
+  return { mainMin:1, mainMax:48, bonusMin:1, bonusMax:18, odds:"Top prize odds: 1 in 30,821,472" };
+}
+
+function mostRecent(draws, game, lookback) {
+  // Sort by draw_date desc and take N
+  const filtered = draws.filter(d => d.game === game).slice();
+  filtered.sort((a,b) => (a.draw_date < b.draw_date ? 1 : -1));
+  return filtered.slice(0, lookback);
+}
+
+function countFrequencies(drawsSlice, rules) {
+  const mainCounts = new Map();
+  const bonusCounts = new Map();
+
+  for (let n = rules.mainMin; n <= rules.mainMax; n++) mainCounts.set(n, 0);
+  for (let n = rules.bonusMin; n <= rules.bonusMax; n++) bonusCounts.set(n, 0);
+
+  for (const d of drawsSlice) {
+    for (const n of d.main) mainCounts.set(n, (mainCounts.get(n) || 0) + 1);
+    bonusCounts.set(d.bonus, (bonusCounts.get(d.bonus) || 0) + 1);
+  }
+  return { mainCounts, bonusCounts };
+}
+
+function topN(map, n, descending=true) {
+  const arr = Array.from(map.entries()); // [num, count]
+  arr.sort((a,b) => descending ? (b[1]-a[1] || a[0]-b[0]) : (a[1]-b[1] || a[0]-b[0]));
+  return arr.slice(0, n);
+}
+
+function weightedChoice(items, weights) {
+  // items: [1,2,3], weights: [w1,w2,w3]
+  const total = weights.reduce((s,w)=>s+w,0);
+  let r = Math.random() * total;
+  for (let i=0; i<items.length; i++) {
+    r -= weights[i];
+    if (r <= 0) return items[i];
+  }
+  return items[items.length-1];
+}
+
+/** ---------- CSV Import ---------- **/
+async function importCSV() {
+  const fileInput = document.getElementById("csvFile");
+  const status = document.getElementById("importStatus");
+  status.textContent = "";
+
+  if (!fileInput.files || fileInput.files.length === 0) {
+    status.textContent = "Pick a CSV file first.";
+    return;
+  }
+
+  const file = fileInput.files[0];
+  const text = await file.text();
+
+  let parsed;
+  try {
+    parsed = parseCSV(text);
+  } catch (e) {
+    status.textContent = "Import failed: " + e.message;
+    return;
+  }
+
+  if (parsed.length === 0) {
+    status.textContent = "No valid rows found. Check your CSV format.";
+    return;
+  }
+
+  // Deduplicate by game+date
+  const existing = loadDraws();
+  const key = (d) => `${d.game}__${d.draw_date}`;
+  const existingKeys = new Set(existing.map(key));
+
+  let inserted = 0;
+  for (const d of parsed) {
+    if (!existingKeys.has(key(d))) {
+      existing.push(d);
+      existingKeys.add(key(d));
+      inserted++;
+    }
+  }
+
+  saveDraws(existing);
+  status.textContent = `Imported ${inserted} new draws. Total stored on this phone: ${existing.length}.`;
+  refreshHotPreview();
+}
+
+function clearData() {
+  localStorage.removeItem(STORAGE_KEY);
+  document.getElementById("importStatus").textContent = "Cleared. No draws stored.";
+  refreshHotPreview();
+}
+
+/** ---------- Generator ---------- **/
 function generate() {
   const game = document.getElementById("game").value;
-  let main, bonus, odds;
+  const method = document.getElementById("method").value;
+  const lookback = Number(document.getElementById("lookback").value);
 
-  if (game === "powerball") {
-    main = uniqueNumbers(5, 1, 69);
-    bonus = uniqueNumbers(1, 1, 26)[0];
-    odds = "Jackpot odds: 1 in 292,201,338";
+  const rules = getGameRules(game);
+  const draws = loadDraws();
+  const slice = mostRecent(draws, game, lookback);
+  const haveData = slice.length >= 10;
+
+  let main, bonus;
+
+  if (method === "random" || !haveData) {
+    main = uniqueNumbers(5, rules.mainMin, rules.mainMax);
+    bonus = uniqueNumbers(1, rules.bonusMin, rules.bonusMax)[0];
   } else {
-    main = uniqueNumbers(5, 1, 48);
-    bonus = uniqueNumbers(1, 1, 18)[0];
-    odds = "Top prize odds: 1 in 30,821,472";
+    const { mainCounts, bonusCounts } = countFrequencies(slice, rules);
+
+    if (method === "hot") {
+      const pool = topN(mainCounts, 20, true).map(x => x[0]);
+      main = uniqueNumbersFromPool(5, pool);
+      const bpool = topN(bonusCounts, 10, true).map(x => x[0]);
+      bonus = bpool.length ? bpool[Math.floor(Math.random()*bpool.length)] : uniqueNumbers(1, rules.bonusMin, rules.bonusMax)[0];
+    } else if (method === "cold") {
+      const pool = topN(mainCounts, 20, false).map(x => x[0]);
+      main = uniqueNumbersFromPool(5, pool);
+      const bpool = topN(bonusCounts, 10, false).map(x => x[0]);
+      bonus = bpool.length ? bpool[Math.floor(Math.random()*bpool.length)] : uniqueNumbers(1, rules.bonusMin, rules.bonusMax)[0];
+    } else if (method === "weighted") {
+      // weight = count + 1 so zeros still possible
+      main = weightedUnique(5, mainCounts, rules.mainMin, rules.mainMax);
+      bonus = weightedBonus(bonusCounts, rules.bonusMin, rules.bonusMax);
+    } else {
+      main = uniqueNumbers(5, rules.mainMin, rules.mainMax);
+      bonus = uniqueNumbers(1, rules.bonusMin, rules.bonusMax)[0];
+    }
   }
 
   document.getElementById("output").innerHTML =
-    `Main: ${main.join(" - ")}<br>Bonus: ${bonus}`;
+    `<div class="pill"><strong>Main:</strong> ${main.join(" - ")}</div>` +
+    `<div class="pill"><strong>Bonus:</strong> ${bonus}</div>` +
+    (!haveData && method !== "random"
+      ? `<div class="muted" style="margin-top:10px;">(Not enough imported data yet — used Random.)</div>`
+      : "");
 
-  document.getElementById("odds").innerText = odds;
+  document.getElementById("odds").textContent = rules.odds;
+  refreshHotPreview();
 }
-</script>
 
+function uniqueNumbersFromPool(count, pool) {
+  const copy = pool.slice();
+  // If pool too small, expand fallback
+  if (copy.length < count) throw new Error("Pool too small");
+  // Shuffle
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy.slice(0, count).sort((a,b)=>a-b);
+}
+
+function weightedUnique(k, mainCounts, min, max) {
+  const chosen = new Set();
+  const items = [];
+  const weights = [];
+  for (let n=min; n<=max; n++) {
+    items.push(n);
+    weights.push((mainCounts.get(n) || 0) + 1);
+  }
+  while (chosen.size < k) {
+    chosen.add(weightedChoice(items, weights));
+  }
+  return Array.from(chosen).sort((a,b)=>a-b);
+}
+
+function weightedBonus(bonusCounts, min, max) {
+  const items = [];
+  const weights = [];
+  for (let n=min; n<=max; n++) {
+    items.push(n);
+    weights.push((bonusCounts.get(n) || 0) + 1);
+  }
+  return weightedChoice(items, weights);
+}
+
+/** ---------- Hot preview ---------- **/
+function refreshHotPreview() {
+  const game = document.getElementById("game").value;
+  const lookback = Number(document.getElementById("lookback").value);
+  const rules = getGameRules(game);
+
+  const draws = loadDraws();
+  const slice = mostRecent(draws, game, lookback);
+
+  const box = document.getElementById("hotPreview");
+  if (slice.length < 10) {
+    box.innerHTML = `<div class="muted">Import at least 10 draws to see hot numbers.</div>`;
+    return;
+  }
+
+  const { mainCounts } = countFrequencies(slice, rules);
+  const hot10 = topN(mainCounts, 10, true);
+
+  box.innerHTML = `
+    <div><strong>${game === "powerball" ? "Powerball" : "Ohio Lucky for Life"}</strong> — using last ${Math.min(lookback, slice.length)} draws</div>
+    <ol>
+      ${hot10.map(([n,c]) => `<li><strong>${n}</strong> — ${c} times</li>`).join("")}
+    </ol>
+  `;
+}
+
+// On load
+refreshHotPreview();
+</script>
 </body>
 </html>
