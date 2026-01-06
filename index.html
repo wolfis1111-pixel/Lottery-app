@@ -1,721 +1,584 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Lottery App (DB + Generator + Predict)</title>
-  <style>
-    :root { color-scheme: light; }
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 16px; background:#fafafa; }
-    h1 { font-size: 20px; margin: 0 0 6px; }
-    h2 { font-size: 16px; margin: 0 0 8px; }
-    .small { color:#555; font-size: 13px; line-height: 1.35; }
-    .ok { color: #0a7; font-weight: 700; }
-    .err { color: #c00; font-weight: 700; }
-
-    .topbar { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom: 10px; }
-    .today { text-align:right; }
-    .pill { display:inline-block; padding: 4px 10px; border-radius: 999px; background:#f1f1f1; border:1px solid #e5e5e5; font-weight:700; font-size:12px; }
-
-    .tabs { display:flex; gap:10px; margin: 10px 0 14px; }
-    .tabbtn {
-      flex:1; padding: 10px; border-radius: 12px; border:1px solid #ddd; background:#fff;
-      font-weight: 900; font-size: 14px;
-    }
-    .tabbtn.active { background:#111; color:#fff; border-color:#111; }
-
-    .card { background:#fff; border: 1px solid #e5e5e5; border-radius: 14px; padding: 12px; margin: 12px 0; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
-    label { display:block; font-weight: 800; margin-top: 10px; }
-    select, input, textarea, button {
-      width: 100%; padding: 10px; font-size: 16px; margin-top: 6px;
-      border-radius: 12px; border:1px solid #ddd; background:#fff;
-    }
-    textarea { height: 110px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-    button { border: 0; background:#111; color:#fff; font-weight: 900; }
-    button.secondary { background:#555; }
-    button.danger { background:#b00020; }
-    button:disabled { background:#999; }
-
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .btnRow { display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
-    .btnRow button { flex: 1; min-width: 160px; }
-
-    .numbers { font-size: 20px; font-weight: 950; padding: 12px; border: 1px dashed #999; border-radius: 14px; text-align:center; background:#fff; letter-spacing: .5px; }
-    .mutedBox { background:#fcfcfc; border:1px solid #eee; border-radius: 12px; padding:10px; }
-    .hide { display:none; }
-    .note { background:#fff7e6; border:1px solid #ffe2a8; padding:10px; border-radius:12px; }
-
-    .hotWrap { display:grid; gap:10px; margin-top:10px; }
-    .hotBox { border:1px solid #eee; border-radius:12px; padding:10px; background:#fcfcff; }
-    .coldBox { border:1px solid #eee; border-radius:12px; padding:10px; background:#fffafa; }
-    .sectionTitle { font-weight: 950; margin-bottom:6px; }
-    .chips { display:flex; flex-wrap:wrap; gap:8px; }
-    .chip {
-      display:inline-flex; align-items:center; gap:6px;
-      padding:6px 10px; border-radius:999px; background:#fff; border:1px solid #e5e5e5;
-      font-weight: 900; font-size: 13px;
-    }
-    .chip span { font-weight: 800; color:#666; font-size:12px; }
-    .chip .sep { color:#bbb; font-weight:900; }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lottery App v10</title>
+<style>
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:16px;background:#fafafa}
+  .top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+  h1{font-size:20px;margin:0 0 6px}
+  .small{font-size:13px;color:#555;line-height:1.35}
+  .pill{display:inline-block;padding:4px 10px;border-radius:999px;background:#f1f1f1;border:1px solid #e5e5e5;font-weight:800;font-size:12px}
+  .tabs{display:flex;gap:10px;margin:12px 0}
+  .tab{flex:1;padding:10px;border-radius:12px;border:1px solid #ddd;background:#fff;font-weight:900}
+  .tab.active{background:#111;color:#fff;border-color:#111}
+  .card{background:#fff;border:1px solid #e5e5e5;border-radius:14px;padding:12px;margin:12px 0;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+  label{display:block;font-weight:900;margin-top:10px}
+  select,input,textarea,button{width:100%;padding:10px;font-size:16px;margin-top:6px;border-radius:12px;border:1px solid #ddd;background:#fff}
+  textarea{height:110px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  button{border:0;background:#111;color:#fff;font-weight:900}
+  button.secondary{background:#555}
+  button.danger{background:#b00020}
+  button:disabled{background:#999}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+  .btnrow button{flex:1;min-width:160px}
+  .numbers{font-size:20px;font-weight:950;padding:12px;border:1px dashed #999;border-radius:14px;text-align:center;background:#fff}
+  .note{background:#fff7e6;border:1px solid #ffe2a8;padding:10px;border-radius:12px}
+  .ok{color:#0a7;font-weight:800}
+  .err{color:#c00;font-weight:800}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#fff;border:1px solid #e5e5e5;font-weight:900;font-size:13px}
+  .chip span{font-weight:800;color:#666;font-size:12px}
+  .sep{color:#bbb;font-weight:900}
+  /* IMPORTANT: show DB view by default even if JS fails */
+  #viewGen,#viewPred{display:none}
+</style>
 </head>
 <body>
-  <div class="topbar">
-    <div>
-      <h1>Lottery App</h1>
-      <div class="small">
-        Required CSV: <code>game,draw_date,n1,n2,n3,n4,n5,bonus</code><br/>
-        game: <code>powerball</code> or <code>ohio_lucky_for_life</code>
-      </div>
+
+<div class="top">
+  <div>
+    <h1>Lottery App <span class="pill">v10</span></h1>
+    <div class="small">
+      Required CSV columns: <code>game,draw_date,n1,n2,n3,n4,n5,bonus</code><br/>
+      game values: <code>powerball</code> or <code>ohio_lucky_for_life</code>
     </div>
-    <div class="today">
-      <div class="pill">Today</div>
-      <div id="todayText" style="font-weight:950;font-size:14px;margin-top:6px;"></div>
-      <div class="small" id="todayISO"></div>
+  </div>
+  <div style="text-align:right">
+    <div class="pill">Today</div>
+    <div id="todayPretty" style="font-weight:950;margin-top:6px"></div>
+    <div id="todayISO" class="small"></div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" id="tDb">Database</button>
+  <button class="tab" id="tGen">Generator</button>
+  <button class="tab" id="tPred">Predict</button>
+</div>
+
+<!-- DATABASE -->
+<div id="viewDb">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+      <div>
+        <div style="font-weight:950">Saved database</div>
+        <div id="savedStatus" class="small"></div>
+      </div>
+      <div class="pill" id="jsStatus">JS: loading…</div>
+    </div>
+
+    <div class="btnrow">
+      <button class="secondary" id="downloadBtn" disabled>Download Backup CSV</button>
+      <button class="danger" id="clearBtn" disabled>Clear Saved DB</button>
+    </div>
+    <div id="summary" class="small" style="margin-top:8px"></div>
+  </div>
+
+  <div class="card">
+    <div style="font-weight:950">Import CSV</div>
+    <input id="fileInput" type="file" accept=".csv,text/csv" />
+    <div id="loadStatus" class="small" style="margin-top:8px"></div>
+
+    <div class="card" style="box-shadow:none;margin:10px 0 0;background:#fcfcfc">
+      <label>Or paste CSV text</label>
+      <textarea id="csvText" placeholder="Paste CSV here…"></textarea>
+      <button class="secondary" id="usePastedBtn">Import & Save Pasted CSV</button>
     </div>
   </div>
 
-  <div class="tabs">
-    <button class="tabbtn active" id="tabDb">Database</button>
-    <button class="tabbtn" id="tabGen">Generator</button>
-    <button class="tabbtn" id="tabPred">Predict</button>
+  <div class="card">
+    <div style="font-weight:950">Add a new draw (date + dropdowns)</div>
+
+    <label>Game</label>
+    <select id="addGame">
+      <option value="powerball">powerball</option>
+      <option value="ohio_lucky_for_life">ohio_lucky_for_life</option>
+    </select>
+
+    <label>Draw Date</label>
+    <input id="addDate" type="date" />
+
+    <div class="row">
+      <div><label>n1</label><select id="a1"></select></div>
+      <div><label>n2</label><select id="a2"></select></div>
+      <div><label>n3</label><select id="a3"></select></div>
+      <div><label>n4</label><select id="a4"></select></div>
+      <div><label>n5</label><select id="a5"></select></div>
+      <div><label id="bonusLbl">bonus</label><select id="ab"></select></div>
+    </div>
+
+    <button id="addBtn" disabled>Add Draw to Database</button>
+    <div id="addStatus" class="small" style="margin-top:8px"></div>
   </div>
+</div>
 
-  <!-- ================== DATABASE TAB ================== -->
-  <div id="viewDb">
-    <div class="card">
-      <h2>Saved database</h2>
-      <div id="savedStatus" class="small"></div>
-      <div class="btnRow">
-        <button class="secondary" id="downloadBtn" disabled>Download Backup CSV</button>
-        <button class="danger" id="clearBtn" disabled>Clear Saved DB</button>
-      </div>
-      <div id="summary" class="small" style="margin-top:8px;"></div>
+<!-- GENERATOR -->
+<div id="viewGen">
+  <div class="card">
+    <div style="font-weight:950">Random Generator</div>
+
+    <label>Game</label>
+    <select id="genGame">
+      <option value="powerball">powerball</option>
+      <option value="ohio_lucky_for_life">ohio_lucky_for_life</option>
+    </select>
+
+    <div class="row">
+      <div><label>How many sets?</label><input id="genCount" type="number" min="1" max="50" value="5"></div>
+      <div><label>Avoid exact matches from last N draws</label><input id="avoidLastN" type="number" min="0" max="500" value="0"></div>
     </div>
 
-    <div class="card">
-      <h2>Import CSV (one time)</h2>
-      <input id="fileInput" type="file" accept=".csv,text/csv" />
-      <div id="loadStatus" class="small" style="margin-top:8px;"></div>
-
-      <div class="mutedBox" style="margin-top:10px;">
-        <label>Or paste CSV text:</label>
-        <textarea id="csvText" placeholder="Paste CSV here..."></textarea>
-        <button class="secondary" id="usePastedBtn">Import & Save Pasted CSV</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>Add a new draw (date picker + dropdowns)</h2>
-
-      <label>Game</label>
-      <select id="gameSelect">
-        <option value="powerball">powerball</option>
-        <option value="ohio_lucky_for_life">ohio_lucky_for_life</option>
-      </select>
-
-      <label>Draw Date</label>
-      <input id="drawDate" type="date" />
-
-      <div class="row">
-        <div><label>n1</label><select id="n1"></select></div>
-        <div><label>n2</label><select id="n2"></select></div>
-        <div><label>n3</label><select id="n3"></select></div>
-        <div><label>n4</label><select id="n4"></select></div>
-        <div><label>n5</label><select id="n5"></select></div>
-        <div><label id="bonusLabel">bonus</label><select id="bonus"></select></div>
-      </div>
-
-      <button id="addBtn" disabled>Add Draw to Database</button>
-      <div id="addStatus" class="small" style="margin-top:8px;"></div>
-    </div>
+    <button id="genBtn">Generate</button>
+    <div id="genOut" style="margin-top:10px;display:grid;gap:10px"></div>
+    <div id="genStatus" class="small" style="margin-top:8px"></div>
   </div>
+</div>
 
-  <!-- ================== GENERATOR TAB ================== -->
-  <div id="viewGen" class="hide">
-    <div class="card">
-      <h2>Random Generator</h2>
-
-      <label>Game</label>
-      <select id="genGame">
-        <option value="powerball">powerball</option>
-        <option value="ohio_lucky_for_life">ohio_lucky_for_life</option>
-      </select>
-
-      <div class="row">
-        <div>
-          <label>How many sets?</label>
-          <input id="genCount" type="number" min="1" max="50" value="5" />
-        </div>
-        <div>
-          <label>Avoid exact matches from last N draws</label>
-          <input id="avoidLastN" type="number" min="0" max="500" value="0" />
-        </div>
-      </div>
-
-      <button id="genBtn">Generate</button>
-
-      <div id="genOut" style="margin-top:10px; display:grid; gap:10px;"></div>
-      <div id="genStatus" class="small" style="margin-top:8px;"></div>
+<!-- PREDICT -->
+<div id="viewPred">
+  <div class="card">
+    <div style="font-weight:950">Predict (Hot & Cold)</div>
+    <div class="note small" style="margin-top:10px">
+      This does <b>not</b> predict the lottery. It generates <b>weighted</b> picks from your saved history.
     </div>
-  </div>
 
-  <!-- ================== PREDICT TAB ================== -->
-  <div id="viewPred" class="hide">
-    <div class="card">
-      <h2>“Most Likely” Picks (from your history)</h2>
+    <label>Game</label>
+    <select id="predGame">
+      <option value="powerball">powerball</option>
+      <option value="ohio_lucky_for_life">ohio_lucky_for_life</option>
+    </select>
 
-      <div class="note small">
-        This does <b>not</b> predict the lottery (draws are random). It generates <b>frequency-weighted</b> picks based on your saved historical draws.
+    <div class="row">
+      <div><label>How many sets?</label><input id="predCount" type="number" min="1" max="50" value="5"></div>
+      <div>
+        <label>Weighting</label>
+        <select id="predMode">
+          <option value="freq">Frequency only</option>
+          <option value="recent">Recency-weighted</option>
+        </select>
       </div>
-
-      <label>Game</label>
-      <select id="predGame">
-        <option value="powerball">powerball</option>
-        <option value="ohio_lucky_for_life">ohio_lucky_for_life</option>
-      </select>
-
-      <div class="row">
-        <div>
-          <label>How many sets?</label>
-          <input id="predCount" type="number" min="1" max="50" value="5" />
-        </div>
-        <div>
-          <label>Weighting</label>
-          <select id="predMode">
-            <option value="freq">Frequency only</option>
-            <option value="recent">Recency-weighted</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="row">
-        <div>
-          <label>Recency strength</label>
-          <input id="recentStrength" type="number" min="0" max="10" step="0.5" value="3" />
-          <div class="small">Higher = recent draws count more.</div>
-        </div>
-        <div>
-          <label>Use last N draws (0 = all)</label>
-          <input id="predLastN" type="number" min="0" max="2000" value="0" />
-        </div>
-      </div>
-
-      <div class="row">
-        <div>
-          <label>Hot/Cold list display</label>
-          <select id="hotDisplay">
-            <option value="w">Weights only</option>
-            <option value="c">Counts only</option>
-            <option value="cw">Counts + Weights</option>
-          </select>
-        </div>
-        <div>
-          <label>Status</label>
-          <div class="mutedBox small" style="margin-top:6px;" id="autoHotHint">
-            Hot & cold numbers auto-refresh when you change settings.
-          </div>
-        </div>
-      </div>
-
-      <div class="btnRow">
-        <button class="secondary" id="hotBtn">Refresh Hot/Cold</button>
-        <button id="predBtn">Generate Most Likely</button>
-      </div>
-
-      <div class="hotWrap">
-        <div class="hotBox">
-          <div class="sectionTitle">Hot Main Numbers (Top 10)</div>
-          <div class="chips" id="hotMain"></div>
-        </div>
-        <div class="hotBox">
-          <div class="sectionTitle">Hot Bonus Numbers (Top 5)</div>
-          <div class="chips" id="hotBonus"></div>
-        </div>
-
-        <div class="coldBox">
-          <div class="sectionTitle">Cold Main Numbers (Bottom 10)</div>
-          <div class="chips" id="coldMain"></div>
-        </div>
-        <div class="coldBox">
-          <div class="sectionTitle">Cold Bonus Numbers (Bottom 5)</div>
-          <div class="chips" id="coldBonus"></div>
-        </div>
-      </div>
-
-      <div id="predOut" style="margin-top:10px; display:grid; gap:10px;"></div>
-      <div id="predStatus" class="small" style="margin-top:8px;"></div>
     </div>
+
+    <div class="row">
+      <div><label>Recency strength</label><input id="recentStrength" type="number" min="0" max="10" step="0.5" value="3"></div>
+      <div><label>Use last N draws (0=all)</label><input id="predLastN" type="number" min="0" max="2000" value="0"></div>
+    </div>
+
+    <label>Display</label>
+    <select id="displayMode">
+      <option value="w">Weights only</option>
+      <option value="c">Counts only</option>
+      <option value="cw">Counts + Weights</option>
+    </select>
+
+    <div class="btnrow">
+      <button class="secondary" id="refreshHC">Refresh Hot/Cold</button>
+      <button id="predBtn">Generate Most Likely</button>
+    </div>
+
+    <div class="card" style="box-shadow:none;background:#fcfcff">
+      <div style="font-weight:950;margin-bottom:6px">Hot Main (Top 10)</div>
+      <div class="chips" id="hotMain"></div>
+      <div style="font-weight:950;margin:10px 0 6px">Hot Bonus (Top 5)</div>
+      <div class="chips" id="hotBonus"></div>
+    </div>
+
+    <div class="card" style="box-shadow:none;background:#fffafa">
+      <div style="font-weight:950;margin-bottom:6px">Cold Main (Bottom 10)</div>
+      <div class="chips" id="coldMain"></div>
+      <div style="font-weight:950;margin:10px 0 6px">Cold Bonus (Bottom 5)</div>
+      <div class="chips" id="coldBonus"></div>
+    </div>
+
+    <div id="predOut" style="margin-top:10px;display:grid;gap:10px"></div>
+    <div id="predStatus" class="small" style="margin-top:8px"></div>
   </div>
+</div>
 
 <script>
-  const REQUIRED_HEADER = "game,draw_date,n1,n2,n3,n4,n5,bonus";
-  const STORAGE_KEY = "LOTTERY_DRAW_DB_CSV_V1";
-
+(() => {
+  const REQUIRED = "game,draw_date,n1,n2,n3,n4,n5,bonus";
+  const KEY = "LOTTERY_DRAW_DB_CSV_V1";
   const RULES = {
-    powerball: { mainMin: 1, mainMax: 69, bonusMin: 1, bonusMax: 26, bonusLabel: "Powerball" },
-    ohio_lucky_for_life: { mainMin: 1, mainMax: 48, bonusMin: 1, bonusMax: 18, bonusLabel: "Lucky Ball" }
+    powerball: {mainMin:1, mainMax:69, bonusMin:1, bonusMax:26, bonusLabel:"Powerball"},
+    ohio_lucky_for_life: {mainMin:1, mainMax:48, bonusMin:1, bonusMax:18, bonusLabel:"Lucky Ball"}
   };
+  const $ = id => document.getElementById(id);
 
-  let dbLines = [];
-  const el = (id) => document.getElementById(id);
+  // show JS is alive
+  $("jsStatus").textContent = "JS: OK";
 
-  function setStatus(target, msg, ok=true) {
-    target.innerHTML = msg ? (ok ? `<span class="ok">${msg}</span>` : `<span class="err">${msg}</span>`) : "";
-  }
+  // today
+  const now = new Date();
+  const iso = now.toISOString().slice(0,10);
+  $("todayISO").textContent = iso;
+  $("todayPretty").textContent = now.toLocaleDateString(undefined,{weekday:"long",year:"numeric",month:"short",day:"numeric"});
+  $("addDate").value = iso;
 
-  function isISODate(s) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
-    const d = new Date(s + "T00:00:00");
-    return !Number.isNaN(d.getTime());
-  }
+  function setStatus(el,msg,ok=true){ el.innerHTML = msg ? `<span class="${ok?"ok":"err"}">${msg}</span>` : ""; }
+  function isISODate(s){ return /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(new Date(s+"T00:00:00").getTime()); }
 
-  function parseCsv(text) {
-    const trimmed = (text || "").trim();
-    if (!trimmed) throw new Error("CSV is empty.");
-    const lines = trimmed.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-    if (!lines.length) throw new Error("CSV has no lines.");
-    if (lines[0] !== REQUIRED_HEADER) throw new Error("CSV columns must be: " + REQUIRED_HEADER);
-
-    for (let i=1; i<lines.length; i++) {
-      const parts = lines[i].split(",").map(x=>x.trim());
-      if (parts.length !== 8) throw new Error(`Bad row at line ${i+1}: expected 8 columns.`);
-      const [game, draw_date] = parts;
-      if (game !== "powerball" && game !== "ohio_lucky_for_life") throw new Error(`Bad game at line ${i+1}: ${game}`);
-      if (!isISODate(draw_date)) throw new Error(`Bad draw_date at line ${i+1}: ${draw_date}`);
-      const nums = parts.slice(2).map(Number);
-      if (nums.some(x => !Number.isFinite(x))) throw new Error(`Non-numeric value at line ${i+1}`);
+  function parseCsv(text){
+    const t = (text||"").trim();
+    if(!t) throw new Error("CSV is empty.");
+    const lines = t.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+    if(lines[0] !== REQUIRED) throw new Error("CSV columns must be: " + REQUIRED);
+    for(let i=1;i<lines.length;i++){
+      const p = lines[i].split(",").map(x=>x.trim());
+      if(p.length!==8) throw new Error(`Bad row line ${i+1}: expected 8 columns`);
+      const [g,d] = p;
+      if(g!=="powerball" && g!=="ohio_lucky_for_life") throw new Error(`Bad game line ${i+1}: ${g}`);
+      if(!isISODate(d)) throw new Error(`Bad draw_date line ${i+1}: ${d}`);
+      if(p.slice(2).some(x=>!Number.isFinite(Number(x)))) throw new Error(`Non-numeric at line ${i+1}`);
     }
     return lines;
   }
 
-  function saveToDevice() {
-    localStorage.setItem(STORAGE_KEY, dbLines.join("\n"));
-    refreshTopStatus();
+  function loadDb(){
+    const saved = localStorage.getItem(KEY);
+    if(!saved) return null;
+    return parseCsv(saved);
   }
-
-  function loadFromDevice() {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) return false;
-    dbLines = parseCsv(saved);
-    return true;
+  function saveDb(lines){
+    localStorage.setItem(KEY, lines.join("\n"));
   }
-
-  function range(min, max) { return Array.from({length:max-min+1}, (_,i)=>i+min); }
-
-  function fillSelect(sel, options, def) {
-    sel.innerHTML = "";
-    for (const v of options) {
-      const opt = document.createElement("option");
-      opt.value = String(v);
-      opt.textContent = String(v);
-      sel.appendChild(opt);
+  function summarize(lines){
+    if(!lines){ $("summary").textContent=""; return; }
+    let pb=0,lfl=0;
+    for(let i=1;i<lines.length;i++){
+      const g = lines[i].split(",")[0].trim();
+      if(g==="powerball") pb++;
+      if(g==="ohio_lucky_for_life") lfl++;
     }
-    sel.value = String(def);
+    $("summary").textContent = `Rows saved: ${lines.length-1} (powerball: ${pb}, ohio_lucky_for_life: ${lfl})`;
+  }
+  function refreshDbUI(){
+    const saved = localStorage.getItem(KEY);
+    if(saved){
+      setStatus($("savedStatus"), "Saved DB found on this device.");
+      $("downloadBtn").disabled = false;
+      $("clearBtn").disabled = false;
+      $("addBtn").disabled = false;
+      try { summarize(parseCsv(saved)); } catch { $("summary").textContent=""; }
+    } else {
+      setStatus($("savedStatus"), "No saved DB yet. Import your CSV below.", false);
+      $("downloadBtn").disabled = true;
+      $("clearBtn").disabled = true;
+      $("addBtn").disabled = true;
+      $("summary").textContent="";
+    }
   }
 
-  function refreshAddDropdowns() {
-    const game = el("gameSelect").value;
-    const r = RULES[game];
-    el("bonusLabel").textContent = "bonus (" + r.bonusLabel + ")";
-    const mainOpts = range(r.mainMin, r.mainMax);
-    fillSelect(el("n1"), mainOpts, r.mainMin);
-    fillSelect(el("n2"), mainOpts, r.mainMin+1);
-    fillSelect(el("n3"), mainOpts, r.mainMin+2);
-    fillSelect(el("n4"), mainOpts, r.mainMin+3);
-    fillSelect(el("n5"), mainOpts, r.mainMin+4);
-    const bonusOpts = range(r.bonusMin, r.bonusMax);
-    fillSelect(el("bonus"), bonusOpts, r.bonusMin);
+  // tabs
+  function show(which){
+    $("viewDb").style.display = which==="db" ? "block" : "none";
+    $("viewGen").style.display = which==="gen" ? "block" : "none";
+    $("viewPred").style.display = which==="pred" ? "block" : "none";
+    ["tDb","tGen","tPred"].forEach(id => $(id).classList.remove("active"));
+    $(which==="db"?"tDb":which==="gen"?"tGen":"tPred").classList.add("active");
+    if(which==="pred") scheduleHC();
   }
+  $("tDb").onclick=()=>show("db");
+  $("tGen").onclick=()=>show("gen");
+  $("tPred").onclick=()=>show("pred");
 
-  function hasDuplicate(game, draw_date) {
-    for (let i=1; i<dbLines.length; i++) {
-      const parts = dbLines[i].split(",").map(x=>x.trim());
-      if (parts[0] === game && parts[1] === draw_date) return true;
+  // dropdown helpers
+  function fillSelect(sel,min,max,def){
+    sel.innerHTML="";
+    for(let v=min; v<=max; v++){
+      const o=document.createElement("option");
+      o.value=String(v); o.textContent=String(v);
+      sel.appendChild(o);
+    }
+    sel.value=String(def);
+  }
+  function refreshAddDropdowns(){
+    const g = $("addGame").value;
+    const r = RULES[g];
+    $("bonusLbl").textContent = "bonus ("+r.bonusLabel+")";
+    fillSelect($("a1"), r.mainMin, r.mainMax, r.mainMin);
+    fillSelect($("a2"), r.mainMin, r.mainMax, r.mainMin+1);
+    fillSelect($("a3"), r.mainMin, r.mainMax, r.mainMin+2);
+    fillSelect($("a4"), r.mainMin, r.mainMax, r.mainMin+3);
+    fillSelect($("a5"), r.mainMin, r.mainMax, r.mainMin+4);
+    fillSelect($("ab"), r.bonusMin, r.bonusMax, r.bonusMin);
+  }
+  $("addGame").onchange = refreshAddDropdowns;
+  refreshAddDropdowns();
+
+  // import file
+  $("fileInput").addEventListener("change", async (e) => {
+    const f = e.target.files?.[0];
+    if(!f) return;
+    const text = await f.text();
+    try {
+      const lines = parseCsv(text);
+      saveDb(lines);
+      refreshDbUI();
+      setStatus($("loadStatus"), "CSV imported and saved.");
+    } catch(err){
+      setStatus($("loadStatus"), err.message || "Import failed", false);
+    }
+  });
+
+  $("usePastedBtn").onclick = () => {
+    try {
+      const lines = parseCsv($("csvText").value);
+      saveDb(lines);
+      refreshDbUI();
+      setStatus($("loadStatus"), "Pasted CSV imported and saved.");
+    } catch(err){
+      setStatus($("loadStatus"), err.message || "Import failed", false);
+    }
+  };
+
+  // add draw
+  function hasDup(lines, game, date){
+    for(let i=1;i<lines.length;i++){
+      const [g,d]=lines[i].split(",").map(x=>x.trim());
+      if(g===game && d===date) return true;
     }
     return false;
   }
+  $("addBtn").onclick = () => {
+    let lines;
+    try { lines = loadDb(); } catch { lines = null; }
+    if(!lines){ setStatus($("addStatus"), "Import CSV first.", false); return; }
 
-  function summarize() {
-    if (!dbLines.length) { el("summary").textContent = ""; return; }
-    let pb = 0, lfl = 0;
-    for (let i=1;i<dbLines.length;i++) {
-      const g = dbLines[i].split(",")[0].trim();
-      if (g === "powerball") pb++;
-      if (g === "ohio_lucky_for_life") lfl++;
-    }
-    el("summary").textContent = `Rows saved: ${dbLines.length-1} (powerball: ${pb}, ohio_lucky_for_life: ${lfl})`;
-  }
+    const game = $("addGame").value;
+    const date = $("addDate").value;
+    if(!isISODate(date)){ setStatus($("addStatus"), "Pick a draw date.", false); return; }
 
-  function refreshTopStatus() {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      setStatus(el("savedStatus"), "Saved DB found on this device.");
-      el("downloadBtn").disabled = false;
-      el("clearBtn").disabled = false;
-      el("addBtn").disabled = false;
-      summarize();
-    } else {
-      setStatus(el("savedStatus"), "No saved DB yet. Import your CSV below.", false);
-      el("downloadBtn").disabled = true;
-      el("clearBtn").disabled = true;
-      el("addBtn").disabled = true;
-      el("summary").textContent = "";
-    }
-  }
-
-  // ---- Tabs ----
-  let currentTab = "db";
-  function showTab(which) {
-    currentTab = which;
-    const db = el("viewDb"), gen = el("viewGen"), pred = el("viewPred");
-    const b1 = el("tabDb"), b2 = el("tabGen"), b3 = el("tabPred");
-    db.classList.add("hide"); gen.classList.add("hide"); pred.classList.add("hide");
-    b1.classList.remove("active"); b2.classList.remove("active"); b3.classList.remove("active");
-
-    if (which === "db") { db.classList.remove("hide"); b1.classList.add("active"); }
-    if (which === "gen") { gen.classList.remove("hide"); b2.classList.add("active"); }
-    if (which === "pred") {
-      pred.classList.remove("hide");
-      b3.classList.add("active");
-      scheduleHotRefresh();
-    }
-  }
-  el("tabDb").addEventListener("click", () => showTab("db"));
-  el("tabGen").addEventListener("click", () => showTab("gen"));
-  el("tabPred").addEventListener("click", () => showTab("pred"));
-
-  // ---- Import ----
-  el("fileInput").addEventListener("change", async (e) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    const text = await f.text();
-    try { dbLines = parseCsv(text); saveToDevice(); setStatus(el("loadStatus"), "CSV imported and saved."); }
-    catch (err) { setStatus(el("loadStatus"), err.message || "Failed to import CSV", false); }
-  });
-
-  el("usePastedBtn").addEventListener("click", () => {
-    try { dbLines = parseCsv(el("csvText").value); saveToDevice(); setStatus(el("loadStatus"), "Pasted CSV imported and saved."); }
-    catch (err) { setStatus(el("loadStatus"), err.message || "Failed to import CSV", false); }
-  });
-
-  // ---- Add draw ----
-  el("addBtn").addEventListener("click", () => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) { setStatus(el("addStatus"), "Import CSV first.", false); return; }
-    try { dbLines = parseCsv(saved); } catch { setStatus(el("addStatus"), "Saved DB is corrupted. Re-import.", false); return; }
-
-    const game = el("gameSelect").value;
-    const draw_date = el("drawDate").value;
     const r = RULES[game];
+    const mains = [+$("a1").value,+$("a2").value,+$("a3").value,+$("a4").value,+$("a5").value];
+    const bonus = +$("ab").value;
 
-    const n1=+el("n1").value, n2=+el("n2").value, n3=+el("n3").value, n4=+el("n4").value, n5=+el("n5").value, bonus=+el("bonus").value;
-    const mains=[n1,n2,n3,n4,n5];
+    if(new Set(mains).size !== 5){ setStatus($("addStatus"), "n1..n5 must be unique.", false); return; }
+    const inRange=(x,min,max)=>Number.isFinite(x)&&x>=min&&x<=max;
+    if(!mains.every(x=>inRange(x,r.mainMin,r.mainMax))){ setStatus($("addStatus"), `Main numbers must be ${r.mainMin}-${r.mainMax}.`, false); return; }
+    if(!inRange(bonus,r.bonusMin,r.bonusMax)){ setStatus($("addStatus"), `Bonus must be ${r.bonusMin}-${r.bonusMax}.`, false); return; }
+    if(hasDup(lines,game,date)){ setStatus($("addStatus"), "That game + draw_date already exists.", false); return; }
 
-    if (!isISODate(draw_date)) { setStatus(el("addStatus"), "Pick a draw date.", false); return; }
-    if (new Set(mains).size !== 5) { setStatus(el("addStatus"), "n1..n5 must be unique.", false); return; }
+    lines.push(`${game},${date},${mains[0]},${mains[1]},${mains[2]},${mains[3]},${mains[4]},${bonus}`);
+    saveDb(lines);
+    refreshDbUI();
+    setStatus($("addStatus"), "Added and saved (last line = last drawn).");
+  };
 
-    const inRange = (x,min,max)=>Number.isFinite(x)&&x>=min&&x<=max;
-    if (!mains.every(x=>inRange(x,r.mainMin,r.mainMax))) { setStatus(el("addStatus"), `Main numbers must be ${r.mainMin}-${r.mainMax}.`, false); return; }
-    if (!inRange(bonus,r.bonusMin,r.bonusMax)) { setStatus(el("addStatus"), `Bonus must be ${r.bonusMin}-${r.bonusMax}.`, false); return; }
+  // download / clear
+  $("downloadBtn").onclick = () => {
+    const saved = localStorage.getItem(KEY);
+    if(!saved) return;
+    const blob = new Blob([saved],{type:"text/csv;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href=url; a.download="draws_saved_backup.csv";
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  };
+  $("clearBtn").onclick = () => {
+    if(!confirm("Delete saved database from this device?")) return;
+    localStorage.removeItem(KEY);
+    refreshDbUI();
+    $("genOut").innerHTML=""; $("predOut").innerHTML="";
+    ["hotMain","hotBonus","coldMain","coldBonus"].forEach(id=>$(id).innerHTML="");
+    setStatus($("predStatus"), "");
+  };
 
-    if (hasDuplicate(game, draw_date)) { setStatus(el("addStatus"), "That game + draw_date already exists.", false); return; }
-
-    dbLines.push(`${game},${draw_date},${n1},${n2},${n3},${n4},${n5},${bonus}`);
-    saveToDevice();
-    setStatus(el("addStatus"), "Added and saved (last line = last drawn).");
-  });
-
-  // ---------- Helpers ----------
-  function loadDbIfExists() {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) return false;
-    dbLines = parseCsv(saved);
-    return true;
-  }
-
-  function rowsForGame(game) {
-    const rows = [];
-    for (let i=1; i<dbLines.length; i++) {
-      const [g, draw_date, n1,n2,n3,n4,n5,bonus] = dbLines[i].split(",").map(x=>x.trim());
-      if (g !== game) continue;
-      rows.push({ draw_date, n1:+n1,n2:+n2,n3:+n3,n4:+n4,n5:+n5, bonus:+bonus });
+  // rows for game
+  function rowsForGame(lines, game){
+    const rows=[];
+    for(let i=1;i<lines.length;i++){
+      const [g,draw_date,n1,n2,n3,n4,n5,bonus]=lines[i].split(",").map(x=>x.trim());
+      if(g!==game) continue;
+      rows.push({draw_date,n1:+n1,n2:+n2,n3:+n3,n4:+n4,n5:+n5,bonus:+bonus});
     }
     return rows;
   }
 
-  // ---------- Generator ----------
-  function pickUnique(min, max, count) {
-    const set = new Set();
-    while (set.size < count) set.add(Math.floor(Math.random()*(max-min+1))+min);
-    return Array.from(set).sort((a,b)=>a-b);
+  // generator
+  function pickUnique(min,max,count){
+    const s=new Set();
+    while(s.size<count) s.add(Math.floor(Math.random()*(max-min+1))+min);
+    return Array.from(s).sort((a,b)=>a-b);
   }
-  function key(draw){ return `${draw.n1}-${draw.n2}-${draw.n3}-${draw.n4}-${draw.n5}|${draw.bonus}`; }
+  function key(d){ return `${d.n1}-${d.n2}-${d.n3}-${d.n4}-${d.n5}|${d.bonus}`; }
 
-  el("genBtn").addEventListener("click", () => {
-    el("genOut").innerHTML = "";
-    setStatus(el("genStatus"), "");
-
-    const game = el("genGame").value;
+  $("genBtn").onclick = () => {
+    $("genOut").innerHTML=""; setStatus($("genStatus"), "");
+    const game = $("genGame").value;
     const r = RULES[game];
-    const count = Math.max(1, Math.min(50, Number(el("genCount").value) || 1));
-    const avoidLastN = Math.max(0, Number(el("avoidLastN").value) || 0);
+    const count = Math.max(1, Math.min(50, Number($("genCount").value)||1));
+    const avoidLastN = Math.max(0, Number($("avoidLastN").value)||0);
 
-    let avoid = new Set();
-    if (avoidLastN > 0 && loadDbIfExists()) {
-      const rows = rowsForGame(game);
-      const last = rows.slice(-avoidLastN);
-      last.forEach(x => avoid.add(key(x)));
+    let avoid=new Set();
+    let lines=null;
+    try { lines = loadDb(); } catch { lines=null; }
+    if(avoidLastN>0 && lines){
+      const rows = rowsForGame(lines, game).slice(-avoidLastN);
+      rows.forEach(x=>avoid.add(key(x)));
     }
 
-    let tries = 0, maxTries = 6000;
-    for (let i=0;i<count;i++) {
-      let made = null;
-      while (tries < maxTries) {
+    let tries=0, maxTries=6000;
+    for(let i=0;i<count;i++){
+      let made=null;
+      while(tries<maxTries){
         tries++;
-        const mains = pickUnique(r.mainMin, r.mainMax, 5);
-        const bonus = Math.floor(Math.random()*(r.bonusMax-r.bonusMin+1))+r.bonusMin;
-        const candidate = { n1:mains[0],n2:mains[1],n3:mains[2],n4:mains[3],n5:mains[4],bonus };
-        if (avoid.size && avoid.has(key(candidate))) continue;
-        made = candidate; break;
+        const mains=pickUnique(r.mainMin,r.mainMax,5);
+        const bonus=Math.floor(Math.random()*(r.bonusMax-r.bonusMin+1))+r.bonusMin;
+        const cand={n1:mains[0],n2:mains[1],n3:mains[2],n4:mains[3],n5:mains[4],bonus};
+        if(avoid.size && avoid.has(key(cand))) continue;
+        made=cand; break;
       }
-      if (!made) { setStatus(el("genStatus"), "Could not generate. Set avoidLastN to 0.", false); break; }
-
-      const box = document.createElement("div");
-      box.className = "numbers";
-      box.textContent = `${made.n1}  ${made.n2}  ${made.n3}  ${made.n4}  ${made.n5}   +${made.bonus}`;
-      el("genOut").appendChild(box);
+      if(!made){ setStatus($("genStatus"), "Could not generate. Set avoidLastN to 0.", false); break; }
+      const box=document.createElement("div");
+      box.className="numbers";
+      box.textContent=`${made.n1}  ${made.n2}  ${made.n3}  ${made.n4}  ${made.n5}   +${made.bonus}`;
+      $("genOut").appendChild(box);
     }
+    setStatus($("genStatus"), `Generated ${count} set(s).` + (avoid.size?` Avoided last ${avoidLastN}.`:""));
+  };
 
-    setStatus(el("genStatus"), `Generated ${count} set(s).` + (avoid.size ? ` Avoided last ${avoidLastN}.` : ""));
-  });
-
-  // ---------- Predict + Hot/Cold ----------
-  function weightedPickOne(weights) {
-    let total = 0;
-    for (let i=0;i<weights.length;i++) total += weights[i] || 0;
-    if (total <= 0) return null;
-    let r = Math.random() * total;
-    for (let i=0;i<weights.length;i++) {
-      const w = weights[i] || 0;
-      if (w <= 0) continue;
-      r -= w;
-      if (r <= 0) return i;
+  // predict + hot/cold
+  function weightedPick(weights){
+    let total=0; for(const w of weights) total += (w||0);
+    if(total<=0) return null;
+    let r=Math.random()*total;
+    for(let i=0;i<weights.length;i++){
+      const w=weights[i]||0; if(w<=0) continue;
+      r-=w; if(r<=0) return i;
     }
     return null;
   }
+  function buildWC(rows, rules, mode, strength){
+    const mainW=Array(rules.mainMax+1).fill(1), bonusW=Array(rules.bonusMax+1).fill(1);
+    const mainC=Array(rules.mainMax+1).fill(0), bonusC=Array(rules.bonusMax+1).fill(0);
+    const n=rows.length;
+    for(let idx=0; idx<n; idx++){
+      const row=rows[idx];
+      [row.n1,row.n2,row.n3,row.n4,row.n5].forEach(v=>{ if(v>=rules.mainMin&&v<=rules.mainMax) mainC[v]++; });
+      if(row.bonus>=rules.bonusMin&&row.bonus<=rules.bonusMax) bonusC[row.bonus]++;
 
-  function buildWeightsAndCounts(game, mode, recentStrength, lastN) {
-    const rules = RULES[game];
-    const mainW = Array(rules.mainMax + 1).fill(1);
-    const bonusW = Array(rules.bonusMax + 1).fill(1);
-    const mainC = Array(rules.mainMax + 1).fill(0);
-    const bonusC = Array(rules.bonusMax + 1).fill(0);
-
-    const rows = rowsForGame(game);
-    const useRows = (lastN && lastN > 0) ? rows.slice(-lastN) : rows;
-
-    const n = useRows.length;
-    for (let idx=0; idx<n; idx++) {
-      const row = useRows[idx];
-
-      [row.n1,row.n2,row.n3,row.n4,row.n5].forEach(v => { if (v>=rules.mainMin && v<=rules.mainMax) mainC[v] += 1; });
-      if (row.bonus>=rules.bonusMin && row.bonus<=rules.bonusMax) bonusC[row.bonus] += 1;
-
-      let w = 1;
-      if (mode === "recent") {
-        const t = n <= 1 ? 1 : (idx / (n - 1));
-        w = 1 + (t * recentStrength);
+      let w=1;
+      if(mode==="recent"){
+        const t = n<=1 ? 1 : (idx/(n-1));
+        w = 1 + (t*strength);
       }
-      [row.n1,row.n2,row.n3,row.n4,row.n5].forEach(v => { if (v>=rules.mainMin && v<=rules.mainMax) mainW[v] += w; });
-      if (row.bonus>=rules.bonusMin && row.bonus<=rules.bonusMax) bonusW[row.bonus] += w;
+      [row.n1,row.n2,row.n3,row.n4,row.n5].forEach(v=>{ if(v>=rules.mainMin&&v<=rules.mainMax) mainW[v]+=w; });
+      if(row.bonus>=rules.bonusMin&&row.bonus<=rules.bonusMax) bonusW[row.bonus]+=w;
     }
-    return { mainW, bonusW, mainC, bonusC, usedCount: useRows.length, totalCount: rows.length };
+    return {mainW,bonusW,mainC,bonusC};
+  }
+  function topK(w,c,min,max,k,asc=false){
+    const arr=[];
+    for(let i=min;i<=max;i++) arr.push({n:i,w:w[i]||0,c:c[i]||0});
+    arr.sort((a,b)=> asc ? ((a.w-b.w)||(a.c-b.c)||(a.n-b.n)) : ((b.w-a.w)||(b.c-a.c)||(a.n-b.n)));
+    return arr.slice(0,k);
+  }
+  function renderChip(x, mode){
+    const d=document.createElement("div"); d.className="chip";
+    if(mode==="c") d.innerHTML=`${x.n} <span>c=${x.c}</span>`;
+    else if(mode==="w") d.innerHTML=`${x.n} <span>w=${x.w.toFixed(1)}</span>`;
+    else d.innerHTML=`${x.n} <span>c=${x.c}</span> <span class="sep">•</span> <span>w=${x.w.toFixed(1)}</span>`;
+    return d;
   }
 
-  function weightedUniqueMains(mainW, rules) {
-    const picked = new Set();
-    const w = mainW.slice();
-    while (picked.size < 5) {
-      const v = weightedPickOne(w);
-      if (v === null) break;
-      if (v < rules.mainMin || v > rules.mainMax) { w[v] = 0; continue; }
-      if (!picked.has(v)) { picked.add(v); w[v] = 0; }
+  function renderHC(){
+    ["hotMain","hotBonus","coldMain","coldBonus"].forEach(id=>$(id).innerHTML="");
+
+    let lines;
+    try { lines = loadDb(); } catch { lines = null; }
+    if(!lines){ setStatus($("predStatus"), "No saved DB found. Import your CSV first.", false); return false; }
+
+    const game=$("predGame").value;
+    const rules=RULES[game];
+    let rows=rowsForGame(lines,game);
+
+    const lastN = Math.max(0, Number($("predLastN").value)||0);
+    if(lastN>0) rows = rows.slice(-lastN);
+
+    if(!rows.length){ setStatus($("predStatus"), "Your saved DB has no rows for this game.", false); return false; }
+
+    const mode=$("predMode").value;
+    const strength=Math.max(0, Number($("recentStrength").value)||0);
+    const disp=$("displayMode").value;
+
+    const {mainW,bonusW,mainC,bonusC} = buildWC(rows, rules, mode, strength);
+
+    const hotM=topK(mainW,mainC,rules.mainMin,rules.mainMax,10,false);
+    const hotB=topK(bonusW,bonusC,rules.bonusMin,rules.bonusMax,5,false);
+    const coldM=topK(mainW,mainC,rules.mainMin,rules.mainMax,10,true);
+    const coldB=topK(bonusW,bonusC,rules.bonusMin,rules.bonusMax,5,true);
+
+    hotM.forEach(x=>$("hotMain").appendChild(renderChip(x,disp)));
+    hotB.forEach(x=>$("hotBonus").appendChild(renderChip(x,disp)));
+    coldM.forEach(x=>$("coldMain").appendChild(renderChip(x,disp)));
+    coldB.forEach(x=>$("coldBonus").appendChild(renderChip(x,disp)));
+
+    setStatus($("predStatus"), `Hot & cold updated (${mode}${mode==="recent" ? ", strength "+strength : ""}).`);
+    return true;
+  }
+
+  function weightedUniqueMains(weights, rules){
+    const picked=new Set();
+    const w=weights.slice();
+    while(picked.size<5){
+      const v=weightedPick(w);
+      if(v===null) break;
+      if(v<rules.mainMin||v>rules.mainMax){ w[v]=0; continue; }
+      if(!picked.has(v)){ picked.add(v); w[v]=0; }
     }
     return Array.from(picked).sort((a,b)=>a-b);
   }
 
-  function topK(weights, counts, min, max, k) {
-    const arr = [];
-    for (let i=min; i<=max; i++) arr.push({ n: i, w: weights[i] || 0, c: counts[i] || 0 });
-    arr.sort((a,b) => (b.w - a.w) || (b.c - a.c) || (a.n - b.n));
-    return arr.slice(0, k);
-  }
+  $("refreshHC").onclick = renderHC;
 
-  function bottomK(weights, counts, min, max, k) {
-    const arr = [];
-    for (let i=min; i<=max; i++) arr.push({ n: i, w: weights[i] || 0, c: counts[i] || 0 });
-    arr.sort((a,b) => (a.w - b.w) || (a.c - b.c) || (a.n - b.n));
-    return arr.slice(0, k);
-  }
+  $("predBtn").onclick = () => {
+    $("predOut").innerHTML="";
+    if(!renderHC()) return;
 
-  function renderChip(x, displayMode) {
-    const chip = document.createElement("div");
-    chip.className = "chip";
-    if (displayMode === "c") chip.innerHTML = `${x.n} <span>c=${x.c}</span>`;
-    else if (displayMode === "w") chip.innerHTML = `${x.n} <span>w=${x.w.toFixed(1)}</span>`;
-    else chip.innerHTML = `${x.n} <span>c=${x.c}</span> <span class="sep">•</span> <span>w=${x.w.toFixed(1)}</span>`;
-    return chip;
-  }
+    let lines = loadDb();
+    const game=$("predGame").value;
+    const rules=RULES[game];
+    let rows=rowsForGame(lines,game);
 
-  function renderHotCold() {
-    el("hotMain").innerHTML = "";
-    el("hotBonus").innerHTML = "";
-    el("coldMain").innerHTML = "";
-    el("coldBonus").innerHTML = "";
+    const lastN = Math.max(0, Number($("predLastN").value)||0);
+    if(lastN>0) rows = rows.slice(-lastN);
 
-    const game = el("predGame").value;
-    const mode = el("predMode").value;
-    const recentStrength = Math.max(0, Number(el("recentStrength").value) || 0);
-    const lastN = Math.max(0, Number(el("predLastN").value) || 0);
-    const displayMode = el("hotDisplay").value;
+    const mode=$("predMode").value;
+    const strength=Math.max(0, Number($("recentStrength").value)||0);
+    const {mainW,bonusW} = buildWC(rows, rules, mode, strength);
 
-    if (!loadDbIfExists()) {
-      setStatus(el("predStatus"), "No saved DB found. Import your CSV first (Database tab).", false);
-      return false;
-    }
-
-    const rows = rowsForGame(game);
-    if (!rows.length) {
-      setStatus(el("predStatus"), "Your saved DB has no rows for this game.", false);
-      return false;
-    }
-
-    const rules = RULES[game];
-    const { mainW, bonusW, mainC, bonusC, usedCount, totalCount } = buildWeightsAndCounts(game, mode, recentStrength, lastN);
-
-    const topMain = topK(mainW, mainC, rules.mainMin, rules.mainMax, 10);
-    const topBonus = topK(bonusW, bonusC, rules.bonusMin, rules.bonusMax, 5);
-
-    const botMain = bottomK(mainW, mainC, rules.mainMin, rules.mainMax, 10);
-    const botBonus = bottomK(bonusW, bonusC, rules.bonusMin, rules.bonusMax, 5);
-
-    topMain.forEach(x => el("hotMain").appendChild(renderChip(x, displayMode)));
-    topBonus.forEach(x => el("hotBonus").appendChild(renderChip(x, displayMode)));
-
-    botMain.forEach(x => el("coldMain").appendChild(renderChip(x, displayMode)));
-    botBonus.forEach(x => el("coldBonus").appendChild(renderChip(x, displayMode)));
-
-    const basis = (lastN && lastN > 0) ? `last ${usedCount} draw(s)` : `all ${totalCount} draw(s)`;
-    const label = mode === "recent" ? `recency-weighted (strength ${recentStrength})` : "frequency only";
-    setStatus(el("predStatus"), `Hot & cold updated using ${label} from ${basis}.`);
-    return true;
-  }
-
-  // Auto-refresh: debounce
-  let hotTimer = null;
-  function scheduleHotRefresh() {
-    if (currentTab !== "pred") return;
-    if (hotTimer) clearTimeout(hotTimer);
-    hotTimer = setTimeout(() => {
-      try { renderHotCold(); } catch {}
-    }, 150);
-  }
-
-  // Predict settings -> auto refresh
-  ["predGame","predMode","recentStrength","predLastN","hotDisplay"].forEach(id => {
-    el(id).addEventListener("input", scheduleHotRefresh);
-    el(id).addEventListener("change", scheduleHotRefresh);
-  });
-
-  el("hotBtn").addEventListener("click", renderHotCold);
-
-  el("predBtn").addEventListener("click", () => {
-    el("predOut").innerHTML = "";
-    setStatus(el("predStatus"), "");
-
-    const game = el("predGame").value;
-    const rules = RULES[game];
-    const count = Math.max(1, Math.min(50, Number(el("predCount").value) || 1));
-    const mode = el("predMode").value;
-    const recentStrength = Math.max(0, Number(el("recentStrength").value) || 0);
-    const lastN = Math.max(0, Number(el("predLastN").value) || 0);
-
-    const ok = renderHotCold();
-    if (!ok) return;
-
-    const { mainW, bonusW } = buildWeightsAndCounts(game, mode, recentStrength, lastN);
-
-    for (let i=0; i<count; i++) {
+    const count = Math.max(1, Math.min(50, Number($("predCount").value)||1));
+    for(let i=0;i<count;i++){
       const mains = weightedUniqueMains(mainW, rules);
-      const bonus = weightedPickOne(bonusW);
-      if (mains.length !== 5 || bonus === null) {
-        setStatus(el("predStatus"), "Could not generate weighted picks (unexpected).", false);
-        break;
-      }
-      const box = document.createElement("div");
-      box.className = "numbers";
-      box.textContent = `${mains[0]}  ${mains[1]}  ${mains[2]}  ${mains[3]}  ${mains[4]}   +${bonus}`;
-      el("predOut").appendChild(box);
+      const bonus = weightedPick(bonusW);
+      if(mains.length!==5 || bonus===null) break;
+      const box=document.createElement("div");
+      box.className="numbers";
+      box.textContent=`${mains[0]}  ${mains[1]}  ${mains[2]}  ${mains[3]}  ${mains[4]}   +${bonus}`;
+      $("predOut").appendChild(box);
     }
+  };
 
-    setStatus(el("predStatus"), `Generated ${count} set(s). Hot/cold lists above auto-refresh with your settings.`);
-  });
-
-  // ---- Download / Clear ----
-  el("downloadBtn").addEventListener("click", () => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) return;
-    const blob = new Blob([saved], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "draws_saved_backup.csv";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  });
-
-  el("clearBtn").addEventListener("click", () => {
-    if (!confirm("Delete saved database from this device?")) return;
-    localStorage.removeItem(STORAGE_KEY);
-    dbLines = [];
-    refreshTopStatus();
-    setStatus(el("loadStatus"), "Cleared. Import again to start over.");
-    setStatus(el("addStatus"), "");
-    setStatus(el("genStatus"), "");
-    setStatus(el("predStatus"), "");
-    el("genOut").innerHTML = "";
-    el("predOut").innerHTML = "";
-    el("hotMain").innerHTML = "";
-    el("hotBonus").innerHTML = "";
-    el("coldMain").innerHTML = "";
-    el("coldBonus").innerHTML = "";
-  });
-
-  // ---- Init today date + default draw date ----
-  const now = new Date();
-  const iso = now.toISOString().slice(0,10);
-  el("todayISO").textContent = iso;
-  el("todayText").textContent = now.toLocaleDateString(undefined, { weekday:"long", year:"numeric", month:"short", day:"numeric" });
-  el("drawDate").value = iso;
-
-  // Init dropdowns
-  el("gameSelect").addEventListener("change", refreshAddDropdowns);
-  refreshAddDropdowns();
-
-  // Auto-load saved DB
-  try {
-    loadFromDevice();
-    refreshTopStatus();
-    setStatus(el("loadStatus"), "Ready.");
-  } catch {
-    localStorage.removeItem(STORAGE_KEY);
-    dbLines = [];
-    refreshTopStatus();
-    setStatus(el("savedStatus"), "Saved DB was invalid and was cleared. Please import again.", false);
+  // auto-refresh hot/cold when changing predict settings (debounced)
+  let timer=null;
+  function scheduleHC(){
+    if(timer) clearTimeout(timer);
+    timer=setTimeout(()=>{ try{renderHC();}catch{} }, 150);
   }
+  ["predGame","predMode","recentStrength","predLastN","displayMode"].forEach(id=>{
+    $(id).addEventListener("input", scheduleHC);
+    $(id).addEventListener("change", scheduleHC);
+  });
+
+  // start
+  refreshDbUI();
+  setStatus($("loadStatus"), "Ready.");
+})();
 </script>
 </body>
 </html>
